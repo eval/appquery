@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-RSpec.describe Appquery do
+RSpec.describe AppQuery do
   it "has a version number" do
-    expect(Appquery::VERSION).not_to be nil
+    expect(AppQuery::VERSION).not_to be nil
   end
 
   it "does something useful" do

@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative "lib/appquery/version"
+require_relative "lib/app_query/version"
 
 Gem::Specification.new do |spec|
   spec.name = "appquery"
-  spec.version = Appquery::VERSION
+  spec.version = AppQuery::VERSION
   spec.authors = ["Gert Goet"]
   spec.email = ["gert@thinkcreate.dk"]
 

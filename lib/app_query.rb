@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "appquery/version"
+require_relative "app_query/version"
 
-module Appquery
+module AppQuery
   class Error < StandardError; end
   # Your code goes here...
 end
