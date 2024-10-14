@@ -1,0 +1,2 @@
+# copy this to .envrc.private to use with direnv
+export PG_DATABASE_URL=postgres://localhost:5432/some_db

@@ -1,0 +1,27 @@
+---
+release:1x:
+  name: release:1x
+release:2x:
+  name: release:2x
+release:3x:
+  name: release:3x
+release:4x:
+  name: release:4x
+release:5x:
+  name: release:5x
+release:6x:
+  name: release:6x
+release:7x:
+  name: release:7x
+release:8x:
+  name: release:8x
+release:major:
+  name: release:major
+release:minor:
+  name: release:minor
+release:patch:
+  name: release:patch
+release:pre:
+  name: release:pre
+release:revision:
+  name: release:revision
