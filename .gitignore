@@ -1,5 +1,6 @@
 /.bundle/
 /.yardoc
+/.irbrc
 /_yardoc/
 /coverage/
 /doc/
