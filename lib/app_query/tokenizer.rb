@@ -6,7 +6,7 @@ module AppQuery
   class Tokenizer
     LexError = Class.new(StandardError)
 
-    attr_reader :input, :tokens, :state, :pos, :start
+    attr_reader :input, :tokens, :pos, :start
 
     def self.tokenize(...)
       new(...).run
@@ -15,10 +15,9 @@ module AppQuery
     def initialize(input, state: nil, start: nil, pos: nil)
       @input = input
       @tokens = []
-      @state = state || :lex_sql
       @start = start || 0
       @pos = pos || @start
-      @return = []
+      @return = Array(state || :lex_sql)
     end
 
     def err(msg)
@@ -59,17 +58,8 @@ module AppQuery
       self
     end
 
-    def assoc_state(s)
-      @state = if s == :return
-        @return.pop
-      else
-        s
-      end
-      self
-    end
-
-    def push_return(s)
-      (@return||= []).push(s)
+    def push_return(*steps)
+      (@return||= []).push(*steps)
       self
     end
 
@@ -82,26 +72,22 @@ module AppQuery
 
     def lex_sql
       if match? /\s/
-        assoc_state :lex_whitespace
-        push_return :lex_sql
+        push_return :lex_sql, :lex_whitespace
       elsif match? /--|\/\*/
-        assoc_state :lex_comment
-        push_return :lex_sql
+        push_return :lex_sql, :lex_comment
       elsif match? /with/i
-        assoc_state :lex_with
-        push_return :lex_sql
+        push_return :lex_sql, :lex_with
       else
-        assoc_state :lex_select
+        push_return :lex_select
       end
     end
 
     def lex_with
-      err "Expected 'WITH'" unless match? %r[WITH ?$]i
+      err "Expected 'WITH'" unless match? %r[WITH\s]i
       read_until /\s/
       emit_token "WITH"
 
-      assoc_state :lex_whitespace
-      push_return :lex_cte
+      push_return :lex_cte, :lex_whitespace
     end
 
     def last_emitted(ignore_whitespace: true)
@@ -127,13 +113,10 @@ module AppQuery
           read_char 2
           emit_token "AS"
 
-          assoc_state :lex_whitespace
-          push_return :lex_cte
-          push_return :lex_cte_select
+          push_return :lex_cte, :lex_cte_select, :lex_whitespace
         when match?(%r[\(])
           # "foo " "(id)"
-          assoc_state :lex_cte_columns
-          push_return :lex_cte
+          push_return :lex_cte, :lex_cte_columns
         else
           err "Expected 'AS' or CTE columns following CTE-identifier, e.g. 'foo AS' 'foo()'"
         end
@@ -143,9 +126,7 @@ module AppQuery
           read_char 2
           emit_token "AS"
 
-          assoc_state :lex_whitespace
-          push_return :lex_cte
-          push_return :lex_cte_select
+          push_return :lex_cte, :lex_cte_select, :lex_whitespace
         else
           err "Expected 'AS' following CTE-columns"
         end
@@ -155,15 +136,12 @@ module AppQuery
           # but wait, there's more!
           read_char
           emit_token "CTE_COMMA"
-          assoc_state :lex_whitespace
-          push_return :lex_cte
+          push_return :lex_cte, :lex_whitespace
         else
-          assoc_state :return
+          return
         end
       else
-        assoc_state :lex_cte_identifier
-
-        push_return :lex_cte
+        push_return :lex_cte, :lex_cte_identifier
       end
     end
 
@@ -216,7 +194,7 @@ module AppQuery
         end
       end
 
-      assoc_state :lex_whitespace
+      push_return :lex_whitespace
     end
 
     def lex_cte_select
@@ -241,7 +219,7 @@ module AppQuery
       read_char
       emit_token "CTE_SELECT"
 
-      assoc_state :lex_whitespace
+      push_return :lex_whitespace
     end
 
     def lex_cte_identifier
@@ -259,14 +237,12 @@ module AppQuery
         emit_token "CTE_IDENTIFIER"
       end
 
-      assoc_state :lex_whitespace
+      push_return :lex_whitespace
     end
 
     def lex_select
       read_until /\Z/
       emit_token "SELECT"
-
-      assoc_state :return
     end
 
     def lex_comment
@@ -282,8 +258,6 @@ module AppQuery
       end
 
       emit_token "COMMENT"
-
-      assoc_state :return
     end
 
     # fine if there's no whitespace upcoming
@@ -293,8 +267,6 @@ module AppQuery
 
         emit_token "WHITESPACE"
       end
-
-      assoc_state :return
     end
 
     def run(pos: nil)
@@ -305,7 +277,10 @@ module AppQuery
     end
 
     def step
-      method(state).call if state
+      if state = @return.pop
+        method(state).call
+        self
+      end
     end
 
     private
