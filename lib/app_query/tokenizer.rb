@@ -81,15 +81,6 @@ module AppQuery
     end
 
     def lex_sql
-      # read whitespace
-      # read comments
-      # read WITH
-      # skip whitespace
-      # read identifier
-      # ? read columns
-      # skip whitespace
-      # read AS
-      #
       if match? /\s/
         assoc_state :lex_whitespace
         push_return :lex_sql
@@ -105,11 +96,7 @@ module AppQuery
     end
 
     def lex_with
-      # "with foo as ()" "select 1"
-      # "with \"foo\" as ()"
-      # read with
-      # read identifier
-      err "Expected 'WITH '" unless match? %r[WITH ]i
+      err "Expected 'WITH'" unless match? %r[WITH ?$]i
       read_until /\s/
       emit_token "WITH"
 
@@ -134,13 +121,6 @@ module AppQuery
     end
 
     def lex_cte
-      # "with " "foo"
-      # "), " "foo"
-      # read identifier
-      # na identifier
-      # - read any space
-      # - or: expect as
-      # - or: (
       if last_emitted? t: "CTE_IDENTIFIER", ignore_whitespace: true
         case
         when match?(/AS/i)
@@ -157,7 +137,7 @@ module AppQuery
         else
           err "Expected 'AS' or CTE columns following CTE-identifier, e.g. 'foo AS' 'foo()'"
         end
-      elsif last_emitted? t: "CTE_COLUMNS", ignore_whitespace: true
+      elsif last_emitted? t: "CTE_COLUMNS_CLOSE", ignore_whitespace: true
         case
         when match?(/AS/i)
           read_char 2
@@ -319,7 +299,6 @@ module AppQuery
 
     def run(pos: nil)
       loop do
-        # break if eos? || step.nil?
         break if step.nil?
       end
       eos? ? tokens : self
@@ -327,8 +306,6 @@ module AppQuery
 
     def step
       method(state).call if state
-    #rescue NameError
-    #  err "Unknown state #{state.inspect}"
     end
 
     private
