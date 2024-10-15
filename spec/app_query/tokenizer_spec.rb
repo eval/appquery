@@ -124,6 +124,53 @@ RSpec.describe AppQuery::Tokenizer do
         include(t: "WHITESPACE", v: %{ })
     end
   end
+
+  describe "#lex_cte_columns" do
+    def emitted_tokens_for_state(s, **kws)
+      emitted_token(s, **kws.merge(state: :lex_cte_columns))
+    end
+
+    def emitted_token_for_state(s, **kws)
+      emitted_token(s, **kws.merge(state: :lex_cte_columns))
+    end
+
+    it "raises when no CTE columns upcoming"  do
+      expect {
+        emitted_token_for_state("f")
+      }.to raise_error described_class::LexError, /expected cte columns/i
+    end
+
+    it "raises when empty CTE columns"  do
+      expect {
+        emitted_token_for_state("( )")
+      }.to raise_error described_class::LexError, /expected a column/i
+    end
+
+    it "raises when column absent"  do
+      expect {
+        emitted_token_for_state("(id,)")
+      }.to raise_error described_class::LexError, /expected a column/i
+    end
+
+    it "raises when column absent"  do
+      expect {
+        emitted_token_for_state("(,foo)")
+      }.to raise_error described_class::LexError, /expected a column/i
+    end
+
+    it "emits all columns" do
+      tokens = emitted_tokens(%{(id, "foo")}, state: :lex_cte_columns)
+
+      expect(tokens).to \
+        include(a_hash_including(t: "CTE_COLUMN", v: "id")).and \
+        include(a_hash_including(t: "CTE_COLUMN", v: %{"foo"}))
+    end
+
+    it "emits any trailing whitespace" do
+      expect(emitted_tokens("(id) ", state: :lex_cte_columns, steps: 2)).to \
+        include(a_hash_including(t: "WHITESPACE"))
+    end
+  end
 end
 
 =begin

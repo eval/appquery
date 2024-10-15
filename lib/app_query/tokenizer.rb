@@ -22,6 +22,13 @@ module AppQuery
     end
 
     def err(msg)
+      linepos = linepos_by_pos[pos] || linepos_by_pos[pos.pred]
+
+      msg += <<~ERR
+
+      #{input}
+      #{" " * linepos}^
+      ERR
       raise LexError, msg
     end
 
@@ -184,9 +191,50 @@ module AppQuery
       # TODO handle ambiguity for "with foo (select 1)"
       err "Expected CTE columns, e.g. '(id, other)'" unless match? %r[\(]
 
-      read_until /\)/
       read_char
-      emit_token "CTE_COLUMNS"
+      read_until /\S/
+      emit_token "CTE_COLUMNS_OPEN"
+
+      loop do
+        case
+        when match?(/\)/)
+          err "Expected a column name" unless last_emitted? t: "CTE_COLUMN"
+
+          read_char
+          emit_token "CTE_COLUMNS_CLOSE"
+          break
+        when match?(/,/)
+          # "( " ","
+          err "Expected a column name" unless last_emitted? t: "CTE_COLUMN"
+          read_char # ','
+
+          read_until /\S/
+          emit_token "CTE_COLUMN_DIV"
+        when match?(/"/)
+          unless last_emitted? t: "CTE_COLUMNS_OPEN"
+            err "Expected comma" unless last_emitted? t: "CTE_COLUMN_DIV"
+          end
+
+          read_char
+          read_until /"/
+          read_char
+
+          emit_token "CTE_COLUMN"
+        when match?(/[A-Za-z]/)
+          unless last_emitted? t: "CTE_COLUMNS_OPEN"
+            err "Expected comma" unless last_emitted? t: "CTE_COLUMN_DIV"
+          end
+
+          read_until %r[,|\s|\)]
+
+          emit_token "CTE_COLUMN"
+        when match?(/\s/)
+          read_until /\S/
+        else
+          # e.g. "(id," "1)" or eos?
+          err "Expected valid column name"
+        end
+      end
 
       assoc_state :lex_whitespace
     end
@@ -279,8 +327,23 @@ module AppQuery
 
     def step
       method(state).call if state
-    rescue NameError
-      err "Unknown state #{state.inspect}"
+    #rescue NameError
+    #  err "Unknown state #{state.inspect}"
+    end
+
+    private
+
+
+    def linepos_by_pos
+      linepos = 0
+      @linepos ||= input.each_char.each_with_index.each_with_object([]) do |(c, ix),acc|
+        acc[ix] = linepos
+        if c == "\n"
+          linepos = 0
+        else
+          linepos += 1
+        end
+      end
     end
   end
 end
