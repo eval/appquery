@@ -171,23 +171,12 @@ RSpec.describe AppQuery::Tokenizer do
         include(a_hash_including(t: "WHITESPACE"))
     end
   end
+
+  describe "#lex_select" do
+    it "should emit something" do
+      expect {
+        emitted_tokens("\n ", state: :lex_select)
+      }.to raise_error described_class::LexError, /expected a select/i
+    end
+  end
 end
-
-=begin
-voorbeeld input:
-<<~INPUT
--- some comment
-INPUT
-
-<<~INPUT
-select 1
-INPUT
-
-<<~INPUT
-WITH foo as() select 1
-INPUT
-
-
-
-
-=end

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "strscan"
-
 module AppQuery
   class Tokenizer
     LexError = Class.new(StandardError)
@@ -71,7 +69,9 @@ module AppQuery
     end
 
     def lex_sql
-      if match? /\s/
+      if last_emitted? t: "CTE_SELECT", ignore_whitespace: true
+        push_return :lex_select
+      elsif match? /\s/
         push_return :lex_sql, :lex_whitespace
       elsif match? /--|\/\*/
         push_return :lex_sql, :lex_comment
@@ -146,7 +146,6 @@ module AppQuery
     end
 
     def lex_cte_columns
-      # TODO handle ambiguity for "with foo (select 1)"
       err "Expected CTE columns, e.g. '(id, other)'" unless match? %r[\(]
 
       read_char
@@ -242,6 +241,7 @@ module AppQuery
 
     def lex_select
       read_until /\Z/
+      err "Expected a SELECT statement" if chars_read.strip.empty?
       emit_token "SELECT"
     end
 
@@ -260,7 +260,7 @@ module AppQuery
       emit_token "COMMENT"
     end
 
-    # fine if there's no whitespace upcoming
+    # optional
     def lex_whitespace
       if match? /\s/
         read_until /\S/
@@ -299,7 +299,3 @@ module AppQuery
     end
   end
 end
-
-=begin
-  Begin in de state "lex_sql" en lees alle comments, whitespace weg en stop met eos
-=end
