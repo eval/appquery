@@ -42,6 +42,11 @@ RSpec.describe AppQuery::Tokenizer do
         emitted_tokens("/* some", state: :lex_comment)
       }.to raise_error described_class::LexError, /expected comment close/i
     end
+
+    it "emits any trailing whitespace"  do
+      expect(emitted_token("-- comment\n", state: :lex_comment, steps: 2)).to \
+        include(t: "WHITESPACE")
+    end
   end
 
   describe "#lex_whitespace" do
@@ -57,6 +62,23 @@ RSpec.describe AppQuery::Tokenizer do
     it "emits whitespace and newlines till eos" do
       expect(emitted_tokens(" \n\n ", state: :lex_whitespace)).to \
         include(a_hash_including(t: "WHITESPACE", v: " \n\n "))
+    end
+  end
+
+  describe "#lex_with" do
+    it "emits WITH with any casing" do
+      expect(emitted_tokens("with\nfoo", state: :lex_with)).to \
+        include(a_hash_including(t: "WITH"))
+    end
+
+    it "emits RECURSIVE when present" do
+      expect(emitted_tokens("with\nrecursive\n", state: :lex_with)).to \
+        include(a_hash_including(t: "RECURSIVE"))
+    end
+
+    it "emits trailing whitespace" do
+      expect(emitted_token("with\n", state: :lex_with)).to \
+        include(t: "WHITESPACE")
     end
   end
 
@@ -173,10 +195,39 @@ RSpec.describe AppQuery::Tokenizer do
   end
 
   describe "#lex_select" do
-    it "should emit something" do
-      expect {
-        emitted_tokens("\n ", state: :lex_select)
-      }.to raise_error described_class::LexError, /expected a select/i
+    it "is always emitted even when no contents" do
+      expect(tokenize("")).to include(a_hash_including(t: "SELECT", v: ""))
+
+      expect(tokenize(<<~SQL)).to include(a_hash_including(t: "SELECT", v: ""))
+      with foo as( select 1 )
+      -- some comment
+      SQL
+    end
+
+    it "never emits a SELECT right after a COMMENT - instead it inserts a newline" do
+      expect(tokenize(<<~SQL.strip)).to include(a_hash_including(t: "WHITESPACE", v: "\n"))
+      -- some comment
+      SQL
+    end
+  end
+
+  describe "::tokenize" do
+    it "completes" do
+      expect(tokenize(<<~SQL)).to be
+      WITH foo as (
+        select 1
+      ),
+      -- some comment
+      -- another
+      bar as (select 2)
+      select * from foo
+      SQL
+
+      expect(tokenize(<<~SQL)).to be
+      with foo as ( select 1 )
+      -- select * from db_products where vp_id=215
+      select ite.vp_id, ite.vp_eid, ite.vp_name
+      SQL
     end
   end
 end

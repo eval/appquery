@@ -50,8 +50,8 @@ module AppQuery
       rest[Regexp.new("\\A%s" % re)]
     end
 
-    def emit_token(t)
-      @tokens << {v: chars_read, t: t, start: start, end: pos}
+    def emit_token(t, v: nil)
+      @tokens << {v: (v || chars_read), t: t, start: start, end: pos}
       @start = @pos
       self
     end
@@ -69,11 +69,11 @@ module AppQuery
     end
 
     def lex_sql
-      if last_emitted? t: "CTE_SELECT", ignore_whitespace: true
+      if last_emitted? t: "CTE_SELECT", ignore: %w[WHITESPACE COMMENT]
         push_return :lex_select
       elsif match? /\s/
         push_return :lex_sql, :lex_whitespace
-      elsif match? /--|\/\*/
+      elsif match_comment?
         push_return :lex_sql, :lex_comment
       elsif match? /with/i
         push_return :lex_sql, :lex_with
@@ -87,27 +87,44 @@ module AppQuery
       read_until /\s/
       emit_token "WITH"
 
+      read_until /\S/
+      emit_token "WHITESPACE" unless chars_read.empty?
+
+      if match? /recursive\s/i
+        read_until /\s/
+        emit_token "RECURSIVE"
+      end
+
       push_return :lex_cte, :lex_whitespace
     end
 
-    def last_emitted(ignore_whitespace: true)
-      unless ignore_whitespace
+    def last_emitted(ignore:)
+      if ignore.none?
         @tokens.last
       else
         t = @tokens.dup
         while (result = t.pop) do
-          break if result[:t] != "WHITESPACE"
+          break if not ignore.include?(result[:t])
         end
         result
       end
     end
 
-    def last_emitted?(ignore_whitespace: true, **kws)
-      last_emitted(ignore_whitespace:) && last_emitted.slice(*kws.keys) == kws
+    def last_emitted?(ignore_whitespace: true, ignore: [], **kws)
+      ignore = if ignore.any?
+                ignore
+               elsif ignore_whitespace
+                 %w[COMMENT WHITESPACE]
+               else
+                 []
+               end
+      last_emitted(ignore:)&.slice(*kws.keys) == kws
     end
 
     def lex_cte
-      if last_emitted? t: "CTE_IDENTIFIER", ignore_whitespace: true
+      if match_comment?
+        push_return :lex_cte, :lex_comment
+      elsif last_emitted? t: "CTE_IDENTIFIER", ignore_whitespace: true
         case
         when match?(/AS/i)
           read_char 2
@@ -143,6 +160,10 @@ module AppQuery
       else
         push_return :lex_cte, :lex_cte_identifier
       end
+    end
+
+    def match_comment?
+      match?(%r[--|\/\*])
     end
 
     def lex_cte_columns
@@ -239,14 +260,19 @@ module AppQuery
       push_return :lex_whitespace
     end
 
+    # there should always be a SELECT
     def lex_select
       read_until /\Z/
-      err "Expected a SELECT statement" if chars_read.strip.empty?
+      read_char
+
+      if last_emitted? t: "COMMENT", ignore_whitespace: false
+        emit_token "WHITESPACE", v: "\n"
+      end
       emit_token "SELECT"
     end
 
     def lex_comment
-      err "Expected comment, i.e. '--' or '/*'" unless match? %r[--|\/\*]
+      err "Expected comment, i.e. '--' or '/*'" unless match_comment?
 
       case
       when match?("--")
@@ -258,6 +284,7 @@ module AppQuery
       end
 
       emit_token "COMMENT"
+      push_return :lex_whitespace
     end
 
     # optional
@@ -285,10 +312,9 @@ module AppQuery
 
     private
 
-
     def linepos_by_pos
       linepos = 0
-      @linepos ||= input.each_char.each_with_index.each_with_object([]) do |(c, ix),acc|
+      input.each_char.each_with_index.each_with_object([]) do |(c, ix),acc|
         acc[ix] = linepos
         if c == "\n"
           linepos = 0
