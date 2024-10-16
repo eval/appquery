@@ -2,9 +2,22 @@
 
 require_relative "app_query/version"
 require_relative "app_query/tokenizer"
+require_relative "app_query/configuration"
 
 module AppQuery
   class Error < StandardError; end
+
+  def self.configuration
+    @configuration ||= AppQuery::Configuration.new
+  end
+
+  def self.configure
+    yield configuration if block_given?
+  end
+
+  def self.[](v)
+    Q.new((Pathname.new(configuration.query_path) / "#{v}.sql").expand_path.read)
+  end
 
   class Q
     def initialize(sql)
@@ -26,11 +39,6 @@ module AppQuery
 
     def to_s
       @sql
-    end
-  end
-
-  class << self
-    def [](k)
     end
   end
 end
