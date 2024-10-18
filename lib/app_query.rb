@@ -2,13 +2,11 @@
 
 require_relative "app_query/version"
 require_relative "app_query/tokenizer"
-require_relative "app_query/configuration"
 
 module AppQuery
   class Error < StandardError; end
 
-  class Configuration < Struct.new(:query_path, :adapter)
-  end
+  Configuration = Struct.new(:query_path, :adapter)
 
   def self.configuration
     @configuration ||= AppQuery::Configuration.new
@@ -24,20 +22,29 @@ module AppQuery
   end
 
   def self.[](v)
-    Q.new((Pathname.new(configuration.query_path) / "#{v}.sql").expand_path.read)
+    query_name = v.to_s
+    full_path = (Pathname.new(configuration.query_path) / "#{query_name}.sql").expand_path
+    Q.new(full_path.read, name: "AppQuery #{query_name}")
   end
 
   class Q
-    def initialize(sql)
+    attr_reader :name
+
+    def initialize(sql, name: nil)
       @sql = sql
+      @name = name
     end
 
     def select_all(binds = [])
-      ActiveRecord::Base.connection.select_all(to_s, nil, binds)
+      ActiveRecord::Base.connection.select_all(to_s, name, binds)
+    end
+
+    def select_one(binds = [])
+      ActiveRecord::Base.connection.select_one(to_s, name, binds)
     end
 
     def as_cte(name = "result", select: "SELECT * FROM result")
-      self.class.new(<<~SQL)
+      self.class.new(<<~SQL, name: name)
       WITH #{name.inspect} AS (
         #{@sql}
       )
@@ -69,7 +76,7 @@ module AppQuery
         self.class.new(tokens.each_with_object([]) do |token, acc|
           v = token[:t] == "SELECT" ? sql : token[:v]
           acc << v
-        end.join)
+        end.join, name: name)
       else
         tokens.find { _1[:t] == "SELECT" }&.[](:v)
       end
