@@ -17,3 +17,6 @@ gem "fiddle"
 
 # prevent warning "rdoc was loaded from the standard library"
 gem "rdoc"
+
+gem "activerecord"
+gem "pg"

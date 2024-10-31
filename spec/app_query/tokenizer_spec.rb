@@ -72,13 +72,13 @@ RSpec.describe AppQuery::Tokenizer do
     end
 
     it "emits RECURSIVE when present" do
-      expect(emitted_tokens("with\nrecursive\n", state: :lex_with)).to \
+      expect(emitted_tokens("with\nrecursive\n", state: :lex_with, steps: 2)).to \
         include(a_hash_including(t: "RECURSIVE"))
     end
 
-    it "emits trailing whitespace" do
+    it "emits trailing whitespace as part of WITH" do
       expect(emitted_token("with\n", state: :lex_with)).to \
-        include(t: "WHITESPACE")
+        include(v: "with\n")
     end
   end
 
@@ -214,7 +214,7 @@ RSpec.describe AppQuery::Tokenizer do
   describe "::tokenize" do
     it "completes" do
       expect(tokenize(<<~SQL)).to be
-      WITH foo as (
+      WITH foo as materialized (
         select 1
       ),
       -- some comment

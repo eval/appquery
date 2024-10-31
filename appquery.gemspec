@@ -13,10 +13,10 @@ Gem::Specification.new do |spec|
     A query like `AppQuery[:some_query]` is read from app/queries/some_query.sql.
 
     Querying a CTE used in this query:
-    `query.replace_select("select * from some_cte").select_all`
+    `query.with_select("select * from some_cte").select_all`
 
     Query the end-result:
-    `query.as_cte(select: "select COUNT(*) from app_query").select_all`
+    `query.with_qselect("select COUNT(*) from app_query").select_all`
 
     Spec-helpers and generators included.
 DESC
@@ -36,7 +36,7 @@ DESC
   spec.files = IO.popen(%w[git ls-files -z], chdir: __dir__, err: IO::NULL) do |ls|
     ls.readlines("\x0", chomp: true).reject do |f|
       (f == gemspec) ||
-        f.start_with?(*%w[bin/ test/ spec/ features/ .git .github appveyor Gemfile])
+        f.start_with?(*%w[bin/ test/ spec/ features/ examples/ .git .github appveyor Gemfile])
     end
   end
   spec.bindir = "exe"

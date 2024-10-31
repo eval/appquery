@@ -2,7 +2,7 @@
 
 module AppQuery
   class Tokenizer
-    LexError = Class.new(StandardError)
+    class LexError < StandardError; end
 
     attr_reader :input, :tokens, :pos, :start
 
@@ -85,17 +85,38 @@ module AppQuery
     def lex_with
       err "Expected 'WITH'" unless match? %r[WITH\s]i
       read_until /\s/
+      read_until /\S/
       emit_token "WITH"
 
-      read_until /\S/
-      emit_token "WHITESPACE" unless chars_read.empty?
+      push_return :lex_recursive_cte
+    end
 
+    def lex_prepend_cte
+      unless eos?
+        # emit_token "WHITESPACE", v: " "
+        push_return :lex_prepend_cte, :lex_recursive_cte
+      else
+        emit_token "COMMA", v: ","
+        emit_token "WHITESPACE", v: "\n"
+      end
+    end
+
+    def lex_append_cte
+      emit_token "COMMA", v: ","
+      emit_token "WHITESPACE", v: "\n  "
+      push_return :lex_recursive_cte
+    end
+
+    def lex_recursive_cte
       if match? /recursive\s/i
         read_until /\s/
+        # make trailing whitespace part of next token
+        # this makes adding cte's easier
+        read_until /\S/
         emit_token "RECURSIVE"
       end
 
-      push_return :lex_cte, :lex_whitespace
+      push_return :lex_cte
     end
 
     def last_emitted(ignore:)
@@ -198,7 +219,7 @@ module AppQuery
           read_char
 
           emit_token "CTE_COLUMN"
-        when match?(/[A-Za-z]/)
+        when match?(/[_A-Za-z]/)
           unless last_emitted? t: "CTE_COLUMNS_OPEN"
             err "Expected comma" unless last_emitted? t: "CTE_COLUMN_DIV"
           end
@@ -243,7 +264,7 @@ module AppQuery
     end
 
     def lex_cte_identifier
-      err "Expected CTE identifier, e.g. 'foo', '\"foo bar\"' " unless match? %r[["A-Za-z]]
+      err "Expected CTE identifier, e.g. 'foo', '\"foo bar\"' " unless match? %r[[_"A-Za-z]]
 
       if match? /"/
         read_char
