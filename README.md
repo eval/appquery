@@ -1,8 +1,9 @@
-# AppQuery - raw SQL queries less raw
+# AppQuery - 🥦 raw SQL, cooked :stew:
 
 [![Gem Version](https://badge.fury.io/rb/appquery.svg)](https://badge.fury.io/rb/appquery)
 
-This rubygem makes working with raw SQL queries in Rails projects more convenient, specifically it provides:
+A Rubygem :gem: that makes working with raw SQL queries in Rails projects more convenient.  
+Specifically it provides:
 - **...a dedicated folder for queries**  
   e.g. `app/queries/reports/weekly.sql` is instantiated via `AppQuery["reports/weekly"]`.
 - **...Rails/rspec generators**  
@@ -14,7 +15,7 @@ This rubygem makes working with raw SQL queries in Rails projects more convenien
   ```
 - **...helpers to rewrite a query for introspection during development and testing**  
   See what a CTE yields: `query.select_all(select: "SELECT * FROM some_cte")`.  
-  Query the end result: `query.select_all(qselect: "SELECT * FROM result WHERE ...")`.  
+  Query the end result: `query.select_one(select: "SELECT COUNT(*) FROM _ WHERE ...")`.  
   Append/prepend CTEs:
   ```ruby
   query.prepend_cte(<<~CTE)
@@ -85,7 +86,7 @@ Even for this trivial query, there's already quite some things 'encoded' that we
 - only published articles
 - only articles _with_ authors
 - only articles published after some date
-  - either a provided date or a fallback
+  - either a provided date or a fallback date
 - authors appear in a certain order and are formatted a certain way
 
 Using the SQL-rewriting capabilities shown below, this library allows you to express these assertions in tests or verify them during development.
@@ -93,33 +94,35 @@ Using the SQL-rewriting capabilities shown below, this library allows you to exp
 ### Verify query results
 
 > [!NOTE]
-> There's `AppQuery#select_all` and `AppQuery#select_one` to execute a query. These are tiny wrappers around the equivalent methods from `ActiveRecord::Base.connection`.  
-> Instead of [positional arguments](https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/DatabaseStatements.html#method-i-select_all), these methods accept keywords `select`, `qselect`, `binds` and `cast`. See below for examples.
+> There's `AppQuery#select_all`, `AppQuery#select_one` and `AppQuery#select_value` to execute a query. `select_(all|one)` are tiny wrappers around the equivalent methods from `ActiveRecord::Base.connection`.  
+> Instead of [positional arguments](https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/DatabaseStatements.html#method-i-select_all), these methods accept keywords `select`, `binds` and `cast`. See below for examples.
 
-Given the query above, you can inspect the results like so:
+Given the query above, you can get the result like so:
 ```ruby
 AppQuery[:recent_articles].select_all(binds: [nil]).entries
 # => [{"article_id" => 1, "article_title" => "Some title", "authors" => "{Foo, Baz}"}, ...]
 AppQuery[:recent_articles].select_all(binds: [1.month.ago]).entries
 ```
 
-Query the result by providing `qselect`:
+Or query the result using the added CTE named `_`:
 
 ```ruby
-AppQuery[:recent_articles].select_one(qselect: "select COUNT(*) AS cnt FROM result", binds: [nil])
+AppQuery[:recent_articles].select_one(select: "select count(*) as cnt from _", binds: [nil])
 # => {"cnt" => 1}
+# select_value is ideal when only interested in the value of the one result
+AppQuery[:recent_articles].select_value(select: "select count(*) from _", binds: [nil])
+# => 1
 ```
 
-This wraps the existing query in a nested CTE (i.e. `WITH result AS (...query...) SELECT * FROM result`).  
-Use `AppQuery#with` to get a new AppQuery-instance with the rewritten SQL:
+Use `AppQuery#with_select` to get a new AppQuery-instance with the rewritten SQL:
 ```ruby
-puts AppQuery[:recent_articles].with(qselect: "select * from result")
+puts AppQuery[:recent_articles].with_select("select * from _")
 ```
 
 
 ### Verify CTE results
 
-You can also select from a CTE by providing `select`:
+You can select from a CTE similarly`:
 ```ruby
 AppQuery[:recent_articles].select_all(select: "SELECT * FROM authors_by_article", binds: [nil], cast: true)
 # => [{"article_id" => 1, "authors" => ["Foo", "Baz"]}, ...]
@@ -143,9 +146,9 @@ AppQuery[:recent_articles].prepend_cte(<<-CTE).select_all(binds: [6.weeks.ago, J
 CTE
 ```
 
-Use `AppQuery#with` to get a new AppQuery-instance with the rewritten sql:
+Use `AppQuery#with_select` to get a new AppQuery-instance with the rewritten sql:
 ```ruby
-puts AppQuery[:recent_articles].with(select: "select * from some_cte")
+puts AppQuery[:recent_articles].with_select("select * from some_cte")
 ```
 
 ### Spec
@@ -162,7 +165,7 @@ RSpec.describe "AppQuery reports/weekly", type: :query, default_binds: [] do
       expect(described_query.select_all(select: "select * from :cte")).to \
         include(a_hash_including("article_id" => 1))
 
-      # short version: query, cte and select are all implied from describe-descriptions
+      # short version: query, cte and select are all implied from descriptions
       expect(select_all).to include(a_hash_including("article_id" => 1))
     end
   end
