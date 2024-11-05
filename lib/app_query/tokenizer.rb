@@ -23,8 +23,8 @@ module AppQuery
 
       msg += <<~ERR
 
-      #{input}
-      #{" " * linepos}^
+        #{input}
+        #{" " * linepos}^
       ERR
       raise LexError, msg
     end
@@ -51,13 +51,13 @@ module AppQuery
     end
 
     def emit_token(t, v: nil)
-      @tokens << {v: (v || chars_read), t: t, start: start, end: pos}
+      @tokens << {v: v || chars_read, t: t, start: start, end: pos}
       @start = @pos
       self
     end
 
     def push_return(*steps)
-      (@return||= []).push(*steps)
+      (@return ||= []).push(*steps)
       self
     end
 
@@ -71,11 +71,11 @@ module AppQuery
     def lex_sql
       if last_emitted? t: "CTE_SELECT", ignore: %w[WHITESPACE COMMENT]
         push_return :lex_select
-      elsif match? /\s/
+      elsif match?(/\s/)
         push_return :lex_sql, :lex_whitespace
       elsif match_comment?
         push_return :lex_sql, :lex_comment
-      elsif match? /with/i
+      elsif match?(/with/i)
         push_return :lex_sql, :lex_with
       else
         push_return :lex_select
@@ -83,21 +83,21 @@ module AppQuery
     end
 
     def lex_with
-      err "Expected 'WITH'" unless match? %r[WITH\s]i
-      read_until /\s/
-      read_until /\S/
+      err "Expected 'WITH'" unless match? %r{WITH\s}i
+      read_until(/\s/)
+      read_until(/\S/)
       emit_token "WITH"
 
       push_return :lex_recursive_cte
     end
 
     def lex_prepend_cte
-      unless eos?
-        # emit_token "WHITESPACE", v: " "
-        push_return :lex_prepend_cte, :lex_recursive_cte
-      else
+      if eos?
         emit_token "COMMA", v: ","
         emit_token "WHITESPACE", v: "\n"
+      else
+        # emit_token "WHITESPACE", v: " "
+        push_return :lex_prepend_cte, :lex_recursive_cte
       end
     end
 
@@ -108,11 +108,11 @@ module AppQuery
     end
 
     def lex_recursive_cte
-      if match? /recursive\s/i
-        read_until /\s/
+      if match?(/recursive\s/i)
+        read_until(/\s/)
         # make trailing whitespace part of next token
         # this makes adding cte's easier
-        read_until /\S/
+        read_until(/\S/)
         emit_token "RECURSIVE"
       end
 
@@ -124,8 +124,8 @@ module AppQuery
         @tokens.last
       else
         t = @tokens.dup
-        while (result = t.pop) do
-          break if not ignore.include?(result[:t])
+        while (result = t.pop)
+          break if !ignore.include?(result[:t])
         end
         result
       end
@@ -133,12 +133,12 @@ module AppQuery
 
     def last_emitted?(ignore_whitespace: true, ignore: [], **kws)
       ignore = if ignore.any?
-                ignore
-               elsif ignore_whitespace
-                 %w[COMMENT WHITESPACE]
-               else
-                 []
-               end
+        ignore
+      elsif ignore_whitespace
+        %w[COMMENT WHITESPACE]
+      else
+        []
+      end
       last_emitted(ignore:)&.slice(*kws.keys) == kws
     end
 
@@ -146,21 +146,19 @@ module AppQuery
       if match_comment?
         push_return :lex_cte, :lex_comment
       elsif last_emitted? t: "CTE_IDENTIFIER", ignore_whitespace: true
-        case
-        when match?(/AS(\s|\()/i)
+        if match?(/AS(\s|\()/i)
           read_char 2
           emit_token "AS"
 
           push_return :lex_cte, :lex_cte_select, :lex_maybe_materialized, :lex_whitespace
-        when match?(%r[\(])
+        elsif match?(%r{\(})
           # "foo " "(id)"
           push_return :lex_cte, :lex_cte_columns
         else
           err "Expected 'AS' or CTE columns following CTE-identifier, e.g. 'foo AS' 'foo()'"
         end
       elsif last_emitted? t: "CTE_COLUMNS_CLOSE", ignore_whitespace: true
-        case
-        when match?(/AS(\s|\()/i)
+        if match?(/AS(\s|\()/i)
           read_char 2
           emit_token "AS"
 
@@ -169,14 +167,11 @@ module AppQuery
           err "Expected 'AS' following CTE-columns"
         end
       elsif last_emitted? t: "CTE_SELECT", ignore_whitespace: true
-        case
-        when match?(/,/)
+        if match?(/,/)
           # but wait, there's more!
           read_char
           emit_token "CTE_COMMA"
           push_return :lex_cte, :lex_whitespace
-        else
-          return
         end
       else
         push_return :lex_cte, :lex_cte_identifier
@@ -184,17 +179,16 @@ module AppQuery
     end
 
     def lex_maybe_materialized
-      case
-      when match?(/materialized/i)
-        read_until /\(/
+      if match?(/materialized/i)
+        read_until(/\(/)
         emit_token "MATERIALIZED"
-      when match?(%r[\(])
+      elsif match?(%r{\(})
         # done
-      when match?(/not\s/i)
+      elsif match?(/not\s/i)
         read_char 3
-        read_until /\S/
+        read_until(/\S/)
         emit_token "NOT_MATERIALIZED"
-        err "Expected 'MATERIALIZED'" unless match? /materialized/i
+        err "Expected 'MATERIALIZED'" unless match?(/materialized/i)
 
         push_return :lex_maybe_materialized
       else
@@ -203,51 +197,50 @@ module AppQuery
     end
 
     def match_comment?
-      match?(%r[--|\/\*])
+      match?(%r{--|/\*})
     end
 
     def lex_cte_columns
-      err "Expected CTE columns, e.g. '(id, other)'" unless match? %r[\(]
+      err "Expected CTE columns, e.g. '(id, other)'" unless match? %r{\(}
 
       read_char
-      read_until /\S/
+      read_until(/\S/)
       emit_token "CTE_COLUMNS_OPEN"
 
       loop do
-        case
-        when match?(/\)/)
+        if match?(/\)/)
           err "Expected a column name" unless last_emitted? t: "CTE_COLUMN"
 
           read_char
           emit_token "CTE_COLUMNS_CLOSE"
           break
-        when match?(/,/)
+        elsif match?(/,/)
           # "( " ","
           err "Expected a column name" unless last_emitted? t: "CTE_COLUMN"
           read_char # ','
 
-          read_until /\S/
+          read_until(/\S/)
           emit_token "CTE_COLUMN_DIV"
-        when match?(/"/)
+        elsif match?(/"/)
           unless last_emitted? t: "CTE_COLUMNS_OPEN"
             err "Expected comma" unless last_emitted? t: "CTE_COLUMN_DIV"
           end
 
           read_char
-          read_until /"/
+          read_until(/"/)
           read_char
 
           emit_token "CTE_COLUMN"
-        when match?(/[_A-Za-z]/)
+        elsif match?(/[_A-Za-z]/)
           unless last_emitted? t: "CTE_COLUMNS_OPEN"
             err "Expected comma" unless last_emitted? t: "CTE_COLUMN_DIV"
           end
 
-          read_until %r[,|\s|\)]
+          read_until %r{,|\s|\)}
 
           emit_token "CTE_COLUMN"
-        when match?(/\s/)
-          read_until /\S/
+        elsif match?(/\s/)
+          read_until(/\S/)
         else
           # e.g. "(id," "1)" or eos?
           err "Expected valid column name"
@@ -258,17 +251,17 @@ module AppQuery
     end
 
     def lex_cte_select
-      err "Expected CTE select, e.g. '(select 1)'" unless match? %r[\(]
+      err "Expected CTE select, e.g. '(select 1)'" unless match? %r{\(}
       read_char
 
       level = 1
       loop do
-        read_until /\)|\(/
-        case
-        when eos?
+        read_until(/\)|\(/)
+        if eos?
           err "CTE select ended prematurely"
-        when match?(/\(/) then level += 1
-        when match?(/\)/)
+        elsif match?(/\(/)
+          level += 1
+        elsif match?(/\)/)
           level -= 1
           break if level.zero?
         end
@@ -283,26 +276,23 @@ module AppQuery
     end
 
     def lex_cte_identifier
-      err "Expected CTE identifier, e.g. 'foo', '\"foo bar\"' " unless match? %r[[_"A-Za-z]]
+      err "Expected CTE identifier, e.g. 'foo', '\"foo bar\"' " unless match? %r{[_"A-Za-z]}
 
-      if match? /"/
+      if match?(/"/)
         read_char
-        read_until /"/
+        read_until(/"/)
         read_char
-
-        emit_token "CTE_IDENTIFIER"
       else
-        read_until %r[\s|\(]
-
-        emit_token "CTE_IDENTIFIER"
+        read_until %r{\s|\(}
       end
+      emit_token "CTE_IDENTIFIER"
 
       push_return :lex_whitespace
     end
 
     # there should always be a SELECT
     def lex_select
-      read_until /\Z/
+      read_until(/\Z/)
       read_char
 
       if last_emitted? t: "COMMENT", ignore_whitespace: false
@@ -314,11 +304,10 @@ module AppQuery
     def lex_comment
       err "Expected comment, i.e. '--' or '/*'" unless match_comment?
 
-      case
-      when match?("--")
-        read_until /\n/
+      if match?("--")
+        read_until(/\n/)
       else
-        read_until %r[\*/]
+        read_until %r{\*/}
         err "Expected comment close '*/'." if eos?
         read_char 2
       end
@@ -329,8 +318,8 @@ module AppQuery
 
     # optional
     def lex_whitespace
-      if match? /\s/
-        read_until /\S/
+      if match?(/\s/)
+        read_until(/\S/)
 
         emit_token "WHITESPACE"
       end
@@ -344,7 +333,7 @@ module AppQuery
     end
 
     def step
-      if state = @return.pop
+      if (state = @return.pop)
         method(state).call
         self
       end
@@ -354,7 +343,7 @@ module AppQuery
 
     def linepos_by_pos
       linepos = 0
-      input.each_char.each_with_index.each_with_object([]) do |(c, ix),acc|
+      input.each_char.each_with_index.each_with_object([]) do |(c, ix), acc|
         acc[ix] = linepos
         if c == "\n"
           linepos = 0

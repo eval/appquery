@@ -55,13 +55,13 @@ module AppQuery
         EMPTY
       else
         cast &&= case cast
-                 when Array
-                   r.columns.zip(cast).to_h
-                 when Hash
-                   cast
-                 else
-                   {}
-                 end
+        when Array
+          r.columns.zip(cast).to_h
+        when Hash
+          cast
+        else
+          {}
+        end
         if !cast || (cast.empty? && r.column_types.empty?)
           # nothing to cast
           new(r.columns, r.rows, r.column_types)
@@ -120,12 +120,12 @@ module AppQuery
     end
 
     def cte_names
-      tokens.filter { _1[:t] == "CTE_IDENTIFIER" }.map{ _1[:v] }
+      tokens.filter { _1[:t] == "CTE_IDENTIFIER" }.map { _1[:v] }
     end
 
     def with_select(sql)
       self.class.new(tokens.each_with_object([]) do |token, acc|
-        v = token[:t] == "SELECT" ? sql : token[:v]
+        v = (token[:t] == "SELECT") ? sql : token[:v]
         acc << v
       end.join, name: name)
     end
@@ -135,10 +135,10 @@ module AppQuery
     # AppQuery("select * from (VALUES(1,'Some article'), (2, 'Another article')) dummy")
     def with_qselect(s)
       self.class.new(<<~SQL, name: name)
-      WITH "result" AS (
-      #{indent(@sql, 2)}
-      )
-      #{s}
+        WITH "result" AS (
+        #{indent(@sql, 2)}
+        )
+        #{s}
       SQL
     end
 
@@ -156,7 +156,7 @@ module AppQuery
       # early raise when cte is not valid sql
       to_append = Tokenizer.tokenize(cte, state: :lex_prepend_cte).then do |tokens|
         recursive? ? tokens.reject { _1[:t] == "RECURSIVE" } : tokens
-      end 
+      end
 
       if cte_names.none?
         self.class.new("WITH #{cte}\n#{self}")
@@ -178,7 +178,7 @@ module AppQuery
       # early raise when cte is not valid sql
       add_recursive, to_append = Tokenizer.tokenize(cte, state: :lex_append_cte).then do |tokens|
         [!recursive? && tokens.find { _1[:t] == "RECURSIVE" },
-         tokens.reject { _1[:t] == "RECURSIVE" }]
+          tokens.reject { _1[:t] == "RECURSIVE" }]
       end
 
       if cte_names.none?
@@ -206,7 +206,7 @@ module AppQuery
     def replace_cte(cte)
       add_recursive, to_append = Tokenizer.tokenize(cte, state: :lex_recursive_cte).then do |tokens|
         [!recursive? && tokens.find { _1[:t] == "RECURSIVE" },
-         tokens.reject { _1[:t] == "RECURSIVE" }]
+          tokens.reject { _1[:t] == "RECURSIVE" }]
       end
 
       cte_name = to_append.find { _1[:t] == "CTE_IDENTIFIER" }&.[](:v)
@@ -217,7 +217,7 @@ module AppQuery
       cte_found = false
 
       self.class.new(tokens.map do |token|
-        if (cte_found ||= (token[:t] == "CTE_IDENTIFIER" && token[:v] == cte_name))
+        if cte_found ||= token[:t] == "CTE_IDENTIFIER" && token[:v] == cte_name
           unless (cte_found = (token[:t] != "CTE_SELECT"))
             next to_append.map { _1[:v] }.join
           end
@@ -254,4 +254,4 @@ begin
 rescue LoadError
 end
 
-require_relative "app_query/rspec" if Object.const_defined? "RSpec"
+require_relative "app_query/rspec" if Object.const_defined? :RSpec

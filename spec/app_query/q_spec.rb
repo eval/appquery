@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe AppQuery::Q do
-  def app_query(*)
-    AppQuery(*)
+  def app_query(...)
+    AppQuery(...)
   end
 
   describe "#select" do
@@ -128,14 +128,14 @@ RSpec.describe AppQuery::Q do
 
     def query
       app_query(<<~SQL)
-with articles(id,title,published_on) as (
-values(1, 'Some title', '2024-3-31'),
-      (2, 'Other title', '2024-10-31')
-)
-select *
-from (values(1, array['ruby','rails']),
-            (2, array['Clojure', 'Babashka'])) article_tags(id,tags)
-SQL
+        with articles(id,title,published_on) as (
+        values(1, 'Some title', '2024-3-31'),
+              (2, 'Other title', '2024-10-31')
+        )
+        select *
+        from (values(1, array['ruby','rails']),
+                    (2, array['Clojure', 'Babashka'])) article_tags(id,tags)
+      SQL
     end
 
     describe "#select_one" do
@@ -171,8 +171,8 @@ SQL
 
         it "allows for custom casting" do
           expect(query.select_all(select: "select * from articles",
-                                  cast: {"published_on" => ActiveRecord::Type::Date.new})).to \
-            include(a_hash_including("published_on" => '2024-3-31'.to_date))
+            cast: {"published_on" => ActiveRecord::Type::Date.new})).to \
+              include(a_hash_including("published_on" => "2024-3-31".to_date))
         end
       end
     end

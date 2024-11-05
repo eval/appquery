@@ -6,7 +6,7 @@ module AppQuery
       end
 
       def expand_select(s)
-        s.gsub(/:cte/, cte_name)
+        s.gsub(":cte", cte_name)
       end
 
       def select_all(select: nil, qselect: nil, binds: default_binds, **kws)
@@ -59,7 +59,7 @@ module AppQuery
         end
 
         def descriptions
-          metadatas.map{ _1[:description] }
+          metadatas.map { _1[:description] }
         end
 
         def query_name
