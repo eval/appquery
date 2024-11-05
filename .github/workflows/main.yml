@@ -26,7 +26,9 @@ jobs:
     strategy:
       matrix:
         ruby:
-          - '3.3.5'
+          - '3.2'
+          - '3.3'
+          - 'head'
     steps:
     - uses: actions/checkout@v4
     - name: Set up Ruby
@@ -37,4 +39,4 @@ jobs:
     - name: Run the default task
       run: bundle exec rake
       env:
-        DATABASE_URL: "postgres://postgres:secret@localhost:5432/postgres"
+        PG_DATABASE_URL: "postgres://postgres:secret@localhost:5432/postgres"

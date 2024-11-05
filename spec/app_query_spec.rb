@@ -6,7 +6,7 @@ RSpec.describe AppQuery do
 
     it "can be configured" do
       expect {
-        described_class.configure {|cfg| cfg.query_path = "foo" }
+        described_class.configure { |cfg| cfg.query_path = "foo" }
       }.to change(described_class.configuration, :query_path)
     end
 

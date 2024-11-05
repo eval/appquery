@@ -10,7 +10,7 @@ RSpec.describe AppQuery::Tokenizer do
   end
 
   def emitted_tokens(s, steps: 1, **kws)
-    described_class.new(s, **kws).tap {|t| steps.times { t.step } }.tokens
+    described_class.new(s, **kws).tap { |t| steps.times { t.step } }.tokens
   end
 
   def emitted_token(...)
@@ -43,7 +43,7 @@ RSpec.describe AppQuery::Tokenizer do
       }.to raise_error described_class::LexError, /expected comment close/i
     end
 
-    it "emits any trailing whitespace"  do
+    it "emits any trailing whitespace" do
       expect(emitted_token("-- comment\n", state: :lex_comment, steps: 2)).to \
         include(t: "WHITESPACE")
     end
@@ -83,35 +83,35 @@ RSpec.describe AppQuery::Tokenizer do
   end
 
   describe "#lex_cte_select" do
-    it "should start with '('"  do
+    it "should start with '('" do
       expect {
         emitted_tokens("select 1", state: :lex_cte_select)
       }.to raise_error described_class::LexError, /expected cte select/i
     end
 
-    it "should have a non-blank select"  do
+    it "should have a non-blank select" do
       expect {
         emitted_tokens("( )", state: :lex_cte_select)
       }.to raise_error described_class::LexError, /expected non-empty cte/i
     end
 
-    it "emits everything up til ')'"  do
+    it "emits everything up til ')'" do
       expect(emitted_token("(select\n 1)", state: :lex_cte_select)).to \
         include(t: "CTE_SELECT", v: "(select\n 1)")
     end
 
-    it "allows for nested parenthese"  do
+    it "allows for nested parenthese" do
       expect(emitted_token("(select * from (select 1) some_alias)", state: :lex_cte_select)).to \
         include(t: "CTE_SELECT", v: "(select * from (select 1) some_alias)")
     end
 
-    it "raises when ending prematurely"  do
+    it "raises when ending prematurely" do
       expect {
         emitted_tokens("( select 1", state: :lex_cte_select)
       }.to raise_error described_class::LexError, /cte select ended prematurely/i
     end
 
-    it "emits any trailing whitespace"  do
+    it "emits any trailing whitespace" do
       expect(emitted_token("( select 1) ", state: :lex_cte_select, steps: 2)).to \
         include(t: "WHITESPACE")
     end
@@ -122,7 +122,7 @@ RSpec.describe AppQuery::Tokenizer do
       emitted_token(s, **kws.merge(state: :lex_cte_identifier))
     end
 
-    it "raises when no identifier coming"  do
+    it "raises when no identifier coming" do
       expect {
         emitted_token_for_state(" ")
       }.to raise_error described_class::LexError, /expected cte identifier/i
@@ -138,12 +138,12 @@ RSpec.describe AppQuery::Tokenizer do
 
     it "emits a quoted identifier" do
       expect(emitted_token_for_state(%{"foo bar" (id)})).to \
-        include(v: %{"foo bar"})
+        include(v: %("foo bar"))
     end
 
     it "emits any trailing whitespace" do
       expect(emitted_token_for_state(%{"foo bar" (id)}, steps: 2)).to \
-        include(t: "WHITESPACE", v: %{ })
+        include(t: "WHITESPACE", v: %( ))
     end
   end
 
@@ -156,25 +156,25 @@ RSpec.describe AppQuery::Tokenizer do
       emitted_token(s, **kws.merge(state: :lex_cte_columns))
     end
 
-    it "raises when no CTE columns upcoming"  do
+    it "raises when no CTE columns upcoming" do
       expect {
         emitted_token_for_state("f")
       }.to raise_error described_class::LexError, /expected cte columns/i
     end
 
-    it "raises when empty CTE columns"  do
+    it "raises when empty CTE columns" do
       expect {
         emitted_token_for_state("( )")
       }.to raise_error described_class::LexError, /expected a column/i
     end
 
-    it "raises when column absent"  do
+    it "raises when column absent" do
       expect {
         emitted_token_for_state("(id,)")
       }.to raise_error described_class::LexError, /expected a column/i
     end
 
-    it "raises when column absent"  do
+    it "raises when column absent" do
       expect {
         emitted_token_for_state("(,foo)")
       }.to raise_error described_class::LexError, /expected a column/i
@@ -185,7 +185,7 @@ RSpec.describe AppQuery::Tokenizer do
 
       expect(tokens).to \
         include(a_hash_including(t: "CTE_COLUMN", v: "id")).and \
-        include(a_hash_including(t: "CTE_COLUMN", v: %{"foo"}))
+          include(a_hash_including(t: "CTE_COLUMN", v: %("foo")))
     end
 
     it "emits any trailing whitespace" do
@@ -199,14 +199,14 @@ RSpec.describe AppQuery::Tokenizer do
       expect(tokenize("")).to include(a_hash_including(t: "SELECT", v: ""))
 
       expect(tokenize(<<~SQL)).to include(a_hash_including(t: "SELECT", v: ""))
-      with foo as( select 1 )
-      -- some comment
+        with foo as( select 1 )
+        -- some comment
       SQL
     end
 
     it "never emits a SELECT right after a COMMENT - instead it inserts a newline" do
       expect(tokenize(<<~SQL.strip)).to include(a_hash_including(t: "WHITESPACE", v: "\n"))
-      -- some comment
+        -- some comment
       SQL
     end
   end
@@ -214,19 +214,19 @@ RSpec.describe AppQuery::Tokenizer do
   describe "::tokenize" do
     it "completes" do
       expect(tokenize(<<~SQL)).to be
-      WITH foo as (
-        select 1
-      ),
-      -- some comment
-      -- another
-      bar as (select 2)
-      select * from foo
+        WITH foo as (
+          select 1
+        ),
+        -- some comment
+        -- another
+        bar as (select 2)
+        select * from foo
       SQL
 
       expect(tokenize(<<~SQL)).to be
-      with foo as ( select 1 )
-      -- select * from db_products where vp_id=215
-      select ite.vp_id, ite.vp_eid, ite.vp_name
+        with foo as ( select 1 )
+        -- select * from db_products where vp_id=215
+        select ite.vp_id, ite.vp_eid, ite.vp_name
       SQL
     end
   end

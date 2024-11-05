@@ -19,7 +19,7 @@ Gem::Specification.new do |spec|
     `query.with_qselect("select COUNT(*) from app_query").select_all`
 
     Spec-helpers and generators included.
-DESC
+  DESC
   spec.homepage = "https://github.com/eval/appquery"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.0.0"
