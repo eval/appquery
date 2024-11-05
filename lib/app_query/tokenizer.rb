@@ -147,11 +147,11 @@ module AppQuery
         push_return :lex_cte, :lex_comment
       elsif last_emitted? t: "CTE_IDENTIFIER", ignore_whitespace: true
         case
-        when match?(/AS/i)
+        when match?(/AS(\s|\()/i)
           read_char 2
           emit_token "AS"
 
-          push_return :lex_cte, :lex_cte_select, :lex_whitespace
+          push_return :lex_cte, :lex_cte_select, :lex_maybe_materialized, :lex_whitespace
         when match?(%r[\(])
           # "foo " "(id)"
           push_return :lex_cte, :lex_cte_columns
@@ -160,11 +160,11 @@ module AppQuery
         end
       elsif last_emitted? t: "CTE_COLUMNS_CLOSE", ignore_whitespace: true
         case
-        when match?(/AS/i)
+        when match?(/AS(\s|\()/i)
           read_char 2
           emit_token "AS"
 
-          push_return :lex_cte, :lex_cte_select, :lex_whitespace
+          push_return :lex_cte, :lex_cte_select, :lex_maybe_materialized, :lex_whitespace
         else
           err "Expected 'AS' following CTE-columns"
         end
@@ -180,6 +180,25 @@ module AppQuery
         end
       else
         push_return :lex_cte, :lex_cte_identifier
+      end
+    end
+
+    def lex_maybe_materialized
+      case
+      when match?(/materialized/i)
+        read_until /\(/
+        emit_token "MATERIALIZED"
+      when match?(%r[\(])
+        # done
+      when match?(/not\s/i)
+        read_char 3
+        read_until /\S/
+        emit_token "NOT_MATERIALIZED"
+        err "Expected 'MATERIALIZED'" unless match? /materialized/i
+
+        push_return :lex_maybe_materialized
+      else
+        err "Expected CTE select or NOT? MATERIALIZED"
       end
     end
 

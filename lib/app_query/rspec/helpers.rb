@@ -10,11 +10,15 @@ module AppQuery
       end
 
       def select_all(select: nil, qselect: nil, binds: default_binds, **kws)
-        described_query(select:, qselect:).select_all(binds:, **kws)
+        @query_result = described_query(select:, qselect:).select_all(binds:, **kws)
       end
 
       def select_one(select: nil, qselect: nil, binds: default_binds, **kws)
-        described_query(select:, qselect:).select_one(binds:, **kws)
+        @query_result = described_query(select:, qselect:).select_one(binds:, **kws)
+      end
+
+      def select_value(select: nil, qselect: nil, binds: default_binds, **kws)
+        @query_result = described_query(select:, qselect:).select_value(binds:, **kws)
       end
 
       def described_query(select: nil, qselect: nil)
@@ -31,6 +35,10 @@ module AppQuery
 
       def query_name
         self.class.query_name
+      end
+
+      def query_result
+        @query_result
       end
 
       module ClassMethods

@@ -54,7 +54,14 @@ module AppQuery
       if r.empty?
         EMPTY
       else
-        cast = {} if cast && !cast.is_a?(Hash)
+        cast &&= case cast
+                 when Array
+                   r.columns.zip(cast).to_h
+                 when Hash
+                   cast
+                 else
+                   {}
+                 end
         if !cast || (cast.empty? && r.column_types.empty?)
           # nothing to cast
           new(r.columns, r.rows, r.column_types)
@@ -91,7 +98,11 @@ module AppQuery
     end
 
     def select_one(binds: [], select: nil, qselect: nil, cast: false)
-      select_all(binds:, select:, qselect:, cast:).first
+      select_all(binds:, select:, qselect:, cast:).first || {}
+    end
+
+    def select_value(binds: [], select: nil, qselect: nil, cast: false)
+      select_one(binds:, select:, qselect:, cast:).values.first
     end
 
     def with(select: nil, qselect: nil)

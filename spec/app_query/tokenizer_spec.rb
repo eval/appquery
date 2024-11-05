@@ -214,7 +214,7 @@ RSpec.describe AppQuery::Tokenizer do
   describe "::tokenize" do
     it "completes" do
       expect(tokenize(<<~SQL)).to be
-      WITH foo as materialized (
+      WITH foo as (
         select 1
       ),
       -- some comment

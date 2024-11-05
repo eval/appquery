@@ -134,7 +134,7 @@ values(1, 'Some title', '2024-3-31'),
 )
 select *
 from (values(1, array['ruby','rails']),
-          (2, array['Clojure', 'Babashka'])) article_tags(id,tags)
+            (2, array['Clojure', 'Babashka'])) article_tags(id,tags)
 SQL
     end
 
@@ -145,8 +145,6 @@ SQL
     end
 
     describe "#select_all" do
-      before { ActiveRecord::Base.establish_connection(url: ENV["DATABASE_URL"]) }
-
       describe "keywords" do
         it "accepts :select" do
           expect(query.select_all(select: "select title from articles")).to \
