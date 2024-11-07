@@ -5,8 +5,8 @@ This Rails v8 application shows in detail how AppQuery helps you inspect and tes
 ## Points of interest
 
 - query-file  
-  [./app/queries/recent_articles.sql]()  
-  [app/queries/recent_articles.sql]()
+  [](./app/queries/recent_articles.sql)  
+  [](app/queries/recent_articles.sql)
 
 ## Setup
 
