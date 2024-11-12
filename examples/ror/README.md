@@ -5,14 +5,15 @@ This Rails v8 application shows in detail how AppQuery helps to inspect and test
 ## Points of interest
 
 The data consists of articles of all Rails releases from the [rubyonrails blog](https://rubyonrails.org/category/releases).  
+Articles (in this application) have zero or more tags like `release:major`, `release:minor`, `release:8x`.
 
-- data  
-  - [spec/fixtures/articles.yml](spec/fixtures/articles.yml)
-  - [spec/fixtures/tags.yml](spec/fixtures/tags.yml)
 - query-file  
   [app/queries/recent_articles.sql](app/queries/recent_articles.sql)
 - spec-file  
   [spec/queries/recent_articles_query_spec.rb](spec/queries/recent_articles_query_spec.rb)
+- data  
+  - [spec/fixtures/articles.yml](spec/fixtures/articles.yml)
+  - [spec/fixtures/tags.yml](spec/fixtures/tags.yml)
 
 
 ## Setup
