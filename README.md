@@ -1,4 +1,4 @@
-# AppQuery - 🥦 raw SQL, cooked :stew:
+# AppQuery - raw SQL 🥦, cooked :stew:
 
 [![Gem Version](https://badge.fury.io/rb/appquery.svg)](https://badge.fury.io/rb/appquery)
 
