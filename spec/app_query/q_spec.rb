@@ -44,20 +44,6 @@ RSpec.describe AppQuery::Q do
     end
   end
 
-  describe "#with_qselect" do
-    it "wraps the whole query in a new CTE" do
-      expect(app_query("with foo as(select 1)").with_qselect("select 1")).to have_attributes(cte_names: %w["result"])
-    end
-
-    it "yields new instance" do
-      aq = app_query("select 1")
-
-      expect {
-        aq.with_qselect("select 2")
-      }.to_not change(aq, :select)
-    end
-  end
-
   describe "#prepend_cte" do
     it "puts a CTE in front" do
       expect(app_query("select 1").prepend_cte("foo AS(select 2)")).to have_attributes(cte_names: %w[foo])
@@ -150,16 +136,11 @@ RSpec.describe AppQuery::Q do
           expect(query.select_all(select: "select title from articles")).to \
             include(a_hash_including("title" => "Some title"))
         end
-
-        it "accepts :qselect" do
-          expect(query.select_all(qselect: "select tags from result", cast: true)).to \
-            include(a_hash_including("tags" => %w[ruby rails]))
-        end
       end
 
       describe "cast" do
         it "casts values correctly" do
-          expect(query.select_all(qselect: "select * from result where id = 1", cast: true)).to \
+          expect(query.select_all(select: "select * from _ where id = 1", cast: true)).to \
             include(a_hash_including("tags" => %w[ruby rails]))
           expect(query.select_all(cast: true)).to \
             include(a_hash_including("tags" => %w[ruby rails]))

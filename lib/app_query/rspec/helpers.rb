@@ -9,24 +9,22 @@ module AppQuery
         s.gsub(":cte", cte_name)
       end
 
-      def select_all(select: nil, qselect: nil, binds: default_binds, **kws)
-        @query_result = described_query(select:, qselect:).select_all(binds:, **kws)
+      def select_all(select: nil, binds: default_binds, **kws)
+        @query_result = described_query(select:).select_all(binds:, **kws)
       end
 
-      def select_one(select: nil, qselect: nil, binds: default_binds, **kws)
-        @query_result = described_query(select:, qselect:).select_one(binds:, **kws)
+      def select_one(select: nil, binds: default_binds, **kws)
+        @query_result = described_query(select:).select_one(binds:, **kws)
       end
 
-      def select_value(select: nil, qselect: nil, binds: default_binds, **kws)
-        @query_result = described_query(select:, qselect:).select_value(binds:, **kws)
+      def select_value(select: nil, binds: default_binds, **kws)
+        @query_result = described_query(select:).select_value(binds:, **kws)
       end
 
-      def described_query(select: nil, qselect: nil)
-        if !qselect
-          select ||= "SELECT * FROM :cte" if cte_name
-        end
+      def described_query(select: nil)
+        select ||= "SELECT * FROM :cte" if cte_name
         select &&= expand_select(select) if cte_name
-        self.class.described_query.with(select:, qselect:)
+        self.class.described_query.with_select(select)
       end
 
       def cte_name

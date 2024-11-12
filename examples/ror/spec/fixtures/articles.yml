@@ -1,0 +1,1393 @@
+---
+1:
+  title: 'Rails 0.9.3: Optimistic locking, dynamic finders, 1.8.2'
+  published_on: 2005-01-04
+  tags: release:pre,release:patch,release:1x
+  id: 1
+2:
+  title: 'Rails 0.9.4: Caching, filters, SQLite3...'
+  published_on: 2005-01-17
+  tags: release:pre
+  id: 2
+3:
+  title: 'Rails 0.9.4.1: Cleaning up the mess'
+  published_on: 2005-01-18
+  tags: release:pre
+  id: 3
+4:
+  title: 'Rails 0.9.5: A world of fixes and tweaks'
+  published_on: 2005-01-26
+  tags: release:pre
+  id: 4
+5:
+  title: 'Rails 0.10.0: Routing, Web Services, Components, Oracle'
+  published_on: 2005-02-24
+  tags: release:pre
+  id: 5
+6:
+  title: 'Rails 0.11.0: Ajax, Pagination, Non-vhost, Incoming mail'
+  published_on: 2005-03-22
+  tags: release:pre
+  id: 6
+7:
+  title: 'Rails 0.11.1: More Ajax, Verifications, SQL Server updated, loads of fixes'
+  published_on: 2005-03-27
+  tags: release:pre
+  id: 7
+8:
+  title: 'Rails 0.12.0: Eager associations, new Base.find API, assertions revisited,
+    more Ajax!'
+  published_on: 2005-04-18
+  tags: release:pre
+  id: 8
+9:
+  title: 'Rails 0.12.1: No major update without a bit of pain'
+  published_on: 2005-04-19
+  tags: release:pre
+  id: 9
+10:
+  title: 'Rails 0.13: 225+ features/fixes in 75 days!'
+  published_on: 2005-07-06
+  tags: release:minor
+  id: 10
+11:
+  title: 'Rails 0.13.1: Faster for all, eager limits, more Ajax'
+  published_on: 2005-07-11
+  tags: release:pre
+  id: 11
+12:
+  title: 'Rails 1.0: The Release Candidate (2)'
+  published_on: 2005-10-19
+  tags: release:pre,release:1x
+  id: 12
+13:
+  title: 'Introducing SwitchTower: Distributed deployment for Rails'
+  published_on: 2005-10-19
+  tags: ''
+  id: 13
+14:
+  title: 'Rails 1.0 RC3 (0.14.2): A bunch of little things'
+  published_on: 2005-10-25
+  tags: release:pre,release:1x
+  id: 14
+16:
+  title: 'Rails 1.0 RC4 (0.14.3): It''s the final countdown!'
+  published_on: 2005-11-07
+  tags: release:pre,release:1x
+  id: 16
+17:
+  title: 'Rails RC5 (0.14.4): Next stop one-oh (really, this time!)'
+  published_on: 2005-12-08
+  tags: release:pre
+  id: 17
+18:
+  title: 'Rails 1.0: Party like it''s one oh oh!'
+  published_on: 2005-12-13
+  tags: release:major,release:1x
+  id: 18
+21:
+  title: i5labs pushing the limits of Rails
+  published_on: 2006-03-19
+  tags: ''
+  id: 21
+23:
+  title: 'Rails 1.1: Release Candidate 1 available'
+  published_on: 2006-03-22
+  tags: release:pre,release:1x
+  id: 23
+24:
+  title: 'Rails 1.1: RJS, Active Record++, respond_to, integration tests, and 500
+    other things!'
+  published_on: 2006-03-28
+  tags: release:minor,release:1x
+  id: 24
+25:
+  title: Upload Progress Helper and Rails 1.1
+  published_on: 2006-03-31
+  tags: release:minor,release:1x
+  id: 25
+26:
+  title: 'Rails 1.1.1: Fixing a slew of minors (but you must still freeze Typo)'
+  published_on: 2006-04-06
+  tags: release:patch,release:1x
+  id: 26
+28:
+  title: 'Rails 1.1.2: Tiny fix for gems dependencies'
+  published_on: 2006-04-09
+  tags: release:patch,release:1x
+  id: 28
+35:
+  title: 'New from O''Reilly: RJS Templates for Rails'
+  published_on: 2006-06-13
+  tags: ''
+  id: 35
+36:
+  title: 'Rails 1.1.3: Security fix and minor fixes'
+  published_on: 2006-06-27
+  tags: release:patch,release:1x
+  id: 36
+37:
+  title: 'Rails 1.1.4: Security fix without breakage'
+  published_on: 2006-06-30
+  tags: release:patch,release:1x
+  id: 37
+38:
+  title: 'Rails 1.1.5: Mandatory security patch (and more)'
+  published_on: 2006-08-09
+  tags: release:patch,release:1x
+  id: 38
+39:
+  title: Rails 1.1.6, backports, and full disclosure
+  published_on: 2006-08-10
+  tags: release:patch,release:1x
+  id: 39
+41:
+  title: 'Rails 1.2: Release Candidate 1'
+  published_on: 2006-11-23
+  tags: release:pre,release:1x
+  id: 41
+42:
+  title: 'Rails 1.2 RC1: New in ActiveRecord'
+  published_on: 2006-11-26
+  tags: release:pre,release:1x
+  id: 42
+43:
+  title: 'Rails 1.2 RC1: New in Action Pack'
+  published_on: 2006-11-26
+  tags: release:pre,release:1x
+  id: 43
+44:
+  title: 'Rails 1.2 RC1: New in Active Support'
+  published_on: 2006-11-26
+  tags: release:pre,release:1x
+  id: 44
+45:
+  title: 'Rails 1.2: Release Candidate 2'
+  published_on: 2007-01-05
+  tags: release:pre,release:1x
+  id: 45
+47:
+  title: 'Rails 1.2: REST admiration, HTTP lovefest, and UTF-8 celebrations'
+  published_on: 2007-01-19
+  tags: release:minor,release:1x
+  id: 47
+51:
+  title: 'Rails 1.2.2: SQLite3, gems, singular resources'
+  published_on: 2007-02-06
+  tags: release:patch,release:1x
+  id: 51
+54:
+  title: 'Rails 1.2.3: Compatible with Ruby 1.8.6 (and other fixes)'
+  published_on: 2007-03-14
+  tags: release:patch,release:1x
+  id: 54
+60:
+  title: 'Rails 2.0: Preview Release'
+  published_on: 2007-09-30
+  tags: release:pre,release:2x
+  id: 60
+61:
+  title: 'Rails 1.2.4: Maintenance release'
+  published_on: 2007-10-05
+  tags: release:patch,release:1x
+  id: 61
+62:
+  title: 'Rails 1.2.5: Security and maintenance release'
+  published_on: 2007-10-12
+  tags: release:patch,release:1x
+  id: 62
+65:
+  title: 'Rails 2.0: Release Candidate 1'
+  published_on: 2007-11-09
+  tags: release:pre,release:2x
+  id: 65
+66:
+  title: 'Rails 2.0: Release Candidate 2'
+  published_on: 2007-11-29
+  tags: release:pre,release:2x
+  id: 66
+67:
+  title: 'Rails 2.0: It''s done!'
+  published_on: 2007-12-07
+  tags: release:major,release:2x
+  id: 67
+68:
+  title: 'Rails 2.0.2: Some new defaults and a few fixes'
+  published_on: 2007-12-17
+  tags: release:patch,release:2x
+  id: 68
+71:
+  title: Rails 2.1 release candidate is imminent!
+  published_on: 2008-04-30
+  tags: release:pre,release:2x
+  id: 71
+72:
+  title: 'Rails 2.1: Time zones, dirty, caching, gem dependencies, caching, etc'
+  published_on: 2008-06-01
+  tags: release:minor,release:2x
+  id: 72
+74:
+  title: 'Rails 2.0.4: Maintenance release'
+  published_on: 2008-09-03
+  tags: release:patch,release:2x
+  id: 74
+75:
+  title: 'Rails 2.1.1: Lots of bug fixes'
+  published_on: 2008-09-05
+  tags: release:patch,release:2x
+  id: 75
+76:
+  title: 'Rails 2.0.5: Security fixes'
+  published_on: 2008-10-19
+  tags: release:patch,release:2x
+  id: 76
+77:
+  title: 'Rails 2.1.2: Security, other fixes'
+  published_on: 2008-10-23
+  tags: release:patch,release:2x
+  id: 77
+78:
+  title: 'Rails 2.2 RC1: i18n, thread safety, docs, etag/last-modified, JRuby/1.9
+    compatibility'
+  published_on: 2008-10-24
+  tags: release:pre,release:2x,release:1x
+  id: 78
+79:
+  title: 'Rails 2.2 RC2: Last stop before final'
+  published_on: 2008-11-14
+  tags: release:pre,release:2x
+  id: 79
+80:
+  title: 'Rails 2.2: i18n, HTTP validators, thread safety, JRuby/1.9 compatibility,
+    docs'
+  published_on: 2008-11-21
+  tags: release:minor,release:2x,release:1x
+  id: 80
+81:
+  title: Phusion Passenger 2.0.5 now compatible with Edge Rails
+  published_on: 2008-12-05
+  tags: release:patch,release:2x
+  id: 81
+83:
+  title: 'Rails 2.3.0 RC1: Templates, Engines, Rack, Metal, much more!'
+  published_on: 2009-02-01
+  tags: release:pre,release:2x
+  id: 83
+84:
+  title: 'Rails 2.3 RC2: Final stop before release'
+  published_on: 2009-03-05
+  tags: release:pre,release:2x
+  id: 84
+85:
+  title: 'Rails 2.3: Templates, Engines, Rack, Metal, much more!'
+  published_on: 2009-03-16
+  tags: release:minor,release:2x
+  id: 85
+86:
+  title: Ruby on Rails 2.3.5 Released
+  published_on: 2009-11-30
+  tags: release:patch,release:2x
+  id: 86
+87:
+  title: 'Rails 3.0: Second beta release'
+  published_on: 2010-04-01
+  tags: release:pre,release:3x
+  id: 87
+88:
+  title: Ruby on Rails 2.3.6 Released
+  published_on: 2010-05-23
+  tags: release:patch,release:2x
+  id: 88
+89:
+  title: Ruby on Rails 2.3.7 Released
+  published_on: 2010-05-24
+  tags: release:patch,release:2x
+  id: 89
+90:
+  title: Ruby on Rails 2.3.8 Released
+  published_on: 2010-05-25
+  tags: release:patch,release:2x
+  id: 90
+91:
+  title: 'Rails 3.0: Beta 4 now, RC in days'
+  published_on: 2010-06-08
+  tags: release:pre,release:3x
+  id: 91
+92:
+  title: 'Rails 3.0: Release candidate!'
+  published_on: 2010-07-26
+  tags: release:pre,release:3x
+  id: 92
+93:
+  title: 'Rails 3.0: Release candidate 2'
+  published_on: 2010-08-24
+  tags: release:pre,release:3x
+  id: 93
+94:
+  title: 'Rails 3.0: It''s ready!'
+  published_on: 2010-08-29
+  tags: release:major,release:3x
+  id: 94
+95:
+  title: Ruby on Rails 2.3.9 Released
+  published_on: 2010-09-04
+  tags: release:patch,release:2x
+  id: 95
+96:
+  title: 'Rails 3.0.3: Faster Active Record plus fixes'
+  published_on: 2010-11-15
+  tags: release:patch,release:3x
+  id: 96
+97:
+  title: Rails 3.0.5 has been released!
+  published_on: 2011-02-27
+  tags: release:patch,release:3x
+  id: 97
+98:
+  title: Rails 3.1 beta 1 released
+  published_on: 2011-05-05
+  tags: release:pre,release:3x
+  id: 98
+99:
+  title: 'Rails 3.1: Release candidate'
+  published_on: 2011-05-22
+  tags: release:pre,release:3x
+  id: 99
+100:
+  title: "[ANN] Rails 3.1.0.rc8"
+  published_on: 2011-08-29
+  tags: release:pre,release:3x
+  id: 100
+101:
+  title: "[ANN] Rails 3.1.1.rc1"
+  published_on: 2011-09-14
+  tags: release:pre,release:3x
+  id: 101
+102:
+  title: "[ANN] Rails 3.1.1.rc2"
+  published_on: 2011-09-29
+  tags: release:pre,release:3x
+  id: 102
+103:
+  title: "[ANN] Rails 3.1.1.rc3"
+  published_on: 2011-10-06
+  tags: release:pre,release:3x
+  id: 103
+104:
+  title: Rails 3.1.1 has been released!
+  published_on: 2011-10-07
+  tags: release:patch,release:3x
+  id: 104
+106:
+  title: 'Rails 3.2 RC1: Faster dev mode & routing, explain queries, tagged logger,
+    store'
+  published_on: 2011-12-20
+  tags: release:pre,release:3x
+  id: 106
+107:
+  title: Rails 3.2.0.rc2 has been released!
+  published_on: 2012-01-04
+  tags: release:pre,release:3x
+  id: 107
+108:
+  title: 'Rails 3.2.0: Faster dev mode & routing, explain queries, tagged logger,
+    store'
+  published_on: 2012-01-20
+  tags: release:patch,release:3x
+  id: 108
+109:
+  title: Rails 3.2.1 has been released
+  published_on: 2012-01-26
+  tags: release:patch,release:3x
+  id: 109
+110:
+  title: Rails 3.2.8.rc1 has been released!
+  published_on: 2012-08-01
+  tags: release:pre,release:3x
+  id: 110
+111:
+  title: "[ANN] Rails 3.2.10, 3.1.9, and 3.0.18 have been released!"
+  published_on: 2013-01-02
+  tags: release:patch,release:3x
+  id: 111
+112:
+  title: "[SEC][ANN] Rails 3.2.11, 3.1.10, 3.0.19, and 2.3.15 have been released!"
+  published_on: 2013-01-08
+  tags: release:patch,release:3x,release:2x
+  id: 112
+113:
+  title: "[SEC][ANN] Rails 3.0.20, and 2.3.16 have been released!"
+  published_on: 2013-01-28
+  tags: release:patch,release:3x,release:2x
+  id: 113
+114:
+  title: "[SEC][ANN] Rails 3.2.12, 3.1.11, and 2.3.17 have been released!"
+  published_on: 2013-02-11
+  tags: release:patch,release:3x,release:2x
+  id: 114
+115:
+  title: Maintenance policy for Ruby on Rails
+  published_on: 2013-02-24
+  tags: ''
+  id: 115
+116:
+  title: 'Rails 4.0: Beta 1 released!'
+  published_on: 2013-02-26
+  tags: release:pre,release:4x
+  id: 116
+117:
+  title: "[ANN] Rails 3.2.13.rc1 has been released!"
+  published_on: 2013-02-27
+  tags: release:pre,release:3x
+  id: 117
+118:
+  title: "[ANN] Rails 3.2.13.rc2 has been released!"
+  published_on: 2013-03-07
+  tags: release:pre,release:3x
+  id: 118
+119:
+  title: "[SEC] [ANN] Rails 3.2.13, 3.1.12, and 2.3.18 have been released!"
+  published_on: 2013-03-18
+  tags: release:patch,release:3x,release:2x
+  id: 119
+120:
+  title: 'Rails 4.0: Release Candidate 1 released!'
+  published_on: 2013-05-01
+  tags: release:pre,release:4x
+  id: 120
+121:
+  title: 'Rails 4.0: Release Candidate 2 released!'
+  published_on: 2013-06-11
+  tags: release:pre,release:4x
+  id: 121
+122:
+  title: 'Rails 4.0: Final version released!'
+  published_on: 2013-06-25
+  tags: release:major,release:4x
+  id: 122
+123:
+  title: "[ANN] Rails 3.2.14.rc1 has been released!"
+  published_on: 2013-07-12
+  tags: release:pre,release:3x
+  id: 123
+124:
+  title: "[ANN] Rails 3.2.14.rc2 has been released!"
+  published_on: 2013-07-16
+  tags: release:pre,release:3x
+  id: 124
+125:
+  title: "[ANN] Rails 3.2.14 has been released!"
+  published_on: 2013-07-23
+  tags: release:patch,release:3x
+  id: 125
+126:
+  title: "[ANN] Rails 3.2.15 has been released!"
+  published_on: 2013-10-16
+  tags: release:patch,release:3x
+  id: 126
+127:
+  title: "[ANN] Rails 4.0.1.rc1 has been released!"
+  published_on: 2013-10-17
+  tags: release:pre,release:4x
+  id: 127
+128:
+  title: "[ANN] Rails 4.0.1 has been released!"
+  published_on: 2013-11-01
+  tags: release:patch,release:4x
+  id: 128
+129:
+  title: 'Rails 4.1.0 beta1: Variants, Spring, mailer previews, JS CSRF, config/secrets.yml,
+    Enums'
+  published_on: 2013-12-18
+  tags: release:pre,release:4x
+  id: 129
+130:
+  title: Rails 3.2.17, 4.0.3 and 4.1.0.beta2 have been released!
+  published_on: 2014-02-18
+  tags: release:pre,release:4x,release:patch,release:3x
+  id: 130
+131:
+  title: 'Rails 4.1.0: Release candidate 1'
+  published_on: 2014-02-18
+  tags: release:pre,release:4x
+  id: 131
+132:
+  title: "[ANN] Rails 4.0.4.rc1 has been released!"
+  published_on: 2014-03-11
+  tags: release:pre,release:4x
+  id: 132
+133:
+  title: "[ANN] Rails 4.0.4 has been released!"
+  published_on: 2014-03-14
+  tags: release:patch,release:4x
+  id: 133
+134:
+  title: 'Rails 4.1.0: Release candidate 2'
+  published_on: 2014-03-25
+  tags: release:pre,release:4x
+  id: 134
+135:
+  title: 'Rails 4.1.0: Spring, Variants, Enums, Mailer previews, secrets.yml'
+  published_on: 2014-04-08
+  tags: release:pre,release:4x
+  id: 135
+136:
+  title: Rails 3.2.18, 4.0.5 and 4.1.1 have been released!
+  published_on: 2014-05-06
+  tags: release:patch,release:3x,release:4x
+  id: 136
+137:
+  title: "[ANN] Rails 4.1.2.rc1 and 4.0.6.rc1 have been released!"
+  published_on: 2014-05-27
+  tags: release:pre,release:4x
+  id: 137
+138:
+  title: "[ANN] Rails 4.1.2.rc2 and 4.0.6.rc2 have been released!"
+  published_on: 2014-06-16
+  tags: release:pre,release:4x
+  id: 138
+139:
+  title: "[ANN] Rails 4.1.2.rc3 and 4.0.6.rc3 have been released!"
+  published_on: 2014-06-23
+  tags: release:pre,release:4x
+  id: 139
+140:
+  title: "[ANN] Rails 4.1.2 and 4.0.6 have been released!"
+  published_on: 2014-06-26
+  tags: release:patch,release:4x
+  id: 140
+141:
+  title: Rails 3.2.19, 4.0.7 and 4.1.3 have been released!
+  published_on: 2014-07-02
+  tags: release:patch,release:3x,release:4x
+  id: 141
+142:
+  title: Rails 4.0.8 and 4.1.4 have been released!
+  published_on: 2014-07-02
+  tags: release:patch,release:4x
+  id: 142
+143:
+  title: Rails 4.0.9 and 4.1.5 have been released!
+  published_on: 2014-08-18
+  tags: release:patch,release:4x
+  id: 143
+144:
+  title: "[ANN] Rails 4.1.6.rc1 and 4.0.10.rc1 have been released!"
+  published_on: 2014-08-19
+  tags: release:pre,release:4x
+  id: 144
+145:
+  title: 'Rails 4.2.0 beta1: Active Job, Deliver Later, Adequate Record, Web Console'
+  published_on: 2014-08-20
+  tags: release:pre,release:4x
+  id: 145
+146:
+  title: "[ANN] Rails 4.1.6.rc2 and 4.0.10.rc2 have been released!"
+  published_on: 2014-09-08
+  tags: release:pre,release:4x
+  id: 146
+147:
+  title: "[ANN] Rails 4.1.6 and 4.0.10 have been released!"
+  published_on: 2014-09-12
+  tags: release:patch,release:4x
+  id: 147
+148:
+  title: "[ANN] Rails 4.2.0.beta2 has been released!"
+  published_on: 2014-09-29
+  tags: release:pre,release:4x
+  id: 148
+149:
+  title: Rails 3.2.20, 4.0.11, 4.1.7, and 4.2.0.beta3 have been released
+  published_on: 2014-10-30
+  tags: release:pre,release:4x,release:patch,release:3x
+  id: 149
+150:
+  title: "[ANN] Rails 4.2.0.beta4 has been released!"
+  published_on: 2014-10-30
+  tags: release:pre,release:4x
+  id: 150
+151:
+  title: Rails 3.2.21, 4.0.12, and 4.1.8 have been released
+  published_on: 2014-11-17
+  tags: release:patch,release:3x,release:4x
+  id: 151
+152:
+  title: Rails 4.0.11.1 and 4.1.7.1 have been released
+  published_on: 2014-11-19
+  tags: release:revision,release:4x
+  id: 152
+153:
+  title: "[ANN] Rails 4.2.0.rc1 has been released!"
+  published_on: 2014-11-28
+  tags: release:pre,release:4x
+  id: 153
+154:
+  title: "[ANN] Rails 4.2.0.rc2 has been released!"
+  published_on: 2014-12-05
+  tags: release:pre,release:4x
+  id: 154
+155:
+  title: "[ANN] Rails 4.2.0.rc3 has been released!"
+  published_on: 2014-12-13
+  tags: release:pre,release:4x
+  id: 155
+156:
+  title: 'Rails 4.2: Active Job, Asynchronous Mails, Adequate Record, Web Console,
+    Foreign Keys'
+  published_on: 2014-12-19
+  tags: release:minor,release:4x
+  id: 156
+157:
+  title: "[ANN] Rails 4.1.9.rc1 and 4.0.13.rc1 have been released!"
+  published_on: 2015-01-02
+  tags: release:pre,release:4x
+  id: 157
+158:
+  title: "[ANN] Rails 4.1.9 and 4.0.13 have been released!"
+  published_on: 2015-01-06
+  tags: release:patch,release:4x
+  id: 158
+159:
+  title: "[ANN] Rails 4.2.1.rc1 and 4.1.10.rc1 have been released!"
+  published_on: 2015-02-20
+  tags: release:pre,release:4x
+  id: 159
+160:
+  title: "[ANN] Rails 4.2.1.rc2 and 4.1.10.rc2 have been released!"
+  published_on: 2015-02-25
+  tags: release:pre,release:4x
+  id: 160
+161:
+  title: "[ANN] Rails 4.2.1.rc3 and 4.1.10.rc3 have been released!"
+  published_on: 2015-03-02
+  tags: release:pre,release:4x
+  id: 161
+162:
+  title: "[ANN] Rails 4.2.1.rc4 and 4.1.10.rc4 have been released!"
+  published_on: 2015-03-12
+  tags: release:pre,release:4x
+  id: 162
+163:
+  title: "[ANN] Rails 4.2.1 and 4.1.10 have been released!"
+  published_on: 2015-03-19
+  tags: release:patch,release:4x
+  id: 163
+164:
+  title: Rails 3.2.22, 4.1.11 and 4.2.2 have been released and more
+  published_on: 2015-06-16
+  tags: release:patch,release:3x,release:4x
+  id: 164
+165:
+  title: "[ANN] Rails 4.2.3.rc1 and 4.1.12.rc1 have been released!"
+  published_on: 2015-06-22
+  tags: release:pre,release:4x
+  id: 165
+166:
+  title: "[ANN] Rails 4.2.3 and 4.1.12 have been released!"
+  published_on: 2015-06-26
+  tags: release:patch,release:4x
+  id: 166
+167:
+  title: "[ANN] Rails 4.2.4.rc1 and 4.1.13.rc1 have been released!"
+  published_on: 2015-08-14
+  tags: release:pre,release:4x
+  id: 167
+168:
+  title: "[ANN] Rails 4.2.4 and 4.1.13 have been released!"
+  published_on: 2015-08-24
+  tags: release:patch,release:4x
+  id: 168
+169:
+  title: "[ANN] Rails 4.2.5.rc1 and 4.1.14.rc1 have been released!"
+  published_on: 2015-10-30
+  tags: release:pre,release:4x
+  id: 169
+170:
+  title: "[ANN] Rails 4.2.5.rc2 and 4.1.14.rc2 have been released!"
+  published_on: 2015-11-06
+  tags: release:pre,release:4x
+  id: 170
+171:
+  title: "[ANN] Rails 4.2.5 and 4.1.14 have been released!"
+  published_on: 2015-11-13
+  tags: release:patch,release:4x
+  id: 171
+172:
+  title: 'Rails 5.0.0.beta1: Action Cable, API mode, Rails command'
+  published_on: 2015-12-18
+  tags: release:pre,release:5x
+  id: 172
+173:
+  title: Rails 5.0.0.beta1.1, 4.2.5.1, 4.1.14.1, 3.2.22.1, and rails-html-sanitizer
+    1.0.3 have been released!
+  published_on: 2016-01-25
+  tags: release:pre,release:5x,release:revision,release:4x,release:3x,release:patch,release:1x,release:minor
+  id: 173
+174:
+  title: 'Rails 5.0.0.beta2: Slashed Action Cable dependencies, fixes galore'
+  published_on: 2016-02-02
+  tags: release:pre,release:5x
+  id: 174
+175:
+  title: 'Rails 5.0.0.beta3: More fixes, RC1 is soon'
+  published_on: 2016-02-27
+  tags: release:pre,release:5x
+  id: 175
+176:
+  title: Rails 4.2.5.2, 4.1.14.2 and 3.2.22.2 have been released!
+  published_on: 2016-02-29
+  tags: release:revision,release:4x,release:3x
+  id: 176
+177:
+  title: "[ANN] Rails 4.2.6.rc1 and 4.1.15.rc1 have been released!"
+  published_on: 2016-03-01
+  tags: release:pre,release:4x
+  id: 177
+178:
+  title: "[ANN] Rails 4.2.6 and 4.1.15 have been released!"
+  published_on: 2016-03-11
+  tags: release:patch,release:4x
+  id: 178
+179:
+  title: Rails 5.0.0.beta4
+  published_on: 2016-04-28
+  tags: release:pre,release:5x
+  id: 179
+180:
+  title: Rails 5.0.0.rc2
+  published_on: 2016-06-22
+  tags: release:pre,release:5x
+  id: 180
+181:
+  title: 'Rails 5.0: Action Cable, API mode, and so much more'
+  published_on: 2016-06-30
+  tags: release:major,release:5x
+  id: 181
+182:
+  title: "[ANN] Rails 4.2.7.rc1 and 4.1.16.rc1 have been released!"
+  published_on: 2016-07-02
+  tags: release:pre,release:4x
+  id: 182
+183:
+  title: "[ANN] Rails 4.2.7 and 4.1.16 have been released!"
+  published_on: 2016-07-13
+  tags: release:patch,release:4x
+  id: 183
+184:
+  title: "[ANN] Rails 5.0.1.rc1 has been released!"
+  published_on: 2016-11-30
+  tags: release:pre,release:5x
+  id: 184
+185:
+  title: "[ANN] Rails 5.0.1.rc2 has been released!"
+  published_on: 2016-12-09
+  tags: release:pre,release:5x
+  id: 185
+186:
+  title: "[ANN] Rails 5.0.1 has been released!"
+  published_on: 2016-12-21
+  tags: release:patch,release:5x
+  id: 186
+187:
+  title: "[ANN] Rails 4.2.8.rc1 has been released!"
+  published_on: 2017-02-10
+  tags: release:pre,release:4x
+  id: 187
+188:
+  title: "[ANN] Rails 4.2.8 has been released!"
+  published_on: 2017-02-21
+  tags: release:patch,release:4x
+  id: 188
+189:
+  title: 'Rails 5.1.0.beta1: Loving JavaScript, System Tests, Encrypted Secrets, and
+    more'
+  published_on: 2017-02-23
+  tags: release:pre,release:5x
+  id: 189
+190:
+  title: "[ANN] Rails 5.0.2.rc1 has been released!"
+  published_on: 2017-02-25
+  tags: release:pre,release:5x
+  id: 190
+191:
+  title: "[ANN] Rails 5.0.2 has been released!"
+  published_on: 2017-03-01
+  tags: release:patch,release:5x
+  id: 191
+192:
+  title: 'Rails 5.1.0.rc1: Loving JavaScript, System Tests, Encrypted Secrets, and
+    more'
+  published_on: 2017-03-20
+  tags: release:pre,release:5x
+  id: 192
+193:
+  title: 'Rails 5.1.0.rc2: Loving JavaScript, System Tests, Encrypted Secrets, and
+    more'
+  published_on: 2017-04-21
+  tags: release:pre,release:5x
+  id: 193
+194:
+  title: 'Rails 5.1: Loving JavaScript, System Tests, Encrypted Secrets, and more'
+  published_on: 2017-04-27
+  tags: release:minor,release:5x
+  id: 194
+195:
+  title: Rails 4.2.9.rc1 has been released!
+  published_on: 2017-06-13
+  tags: release:pre,release:4x
+  id: 195
+196:
+  title: Rails 5.0.4.rc1 has been released
+  published_on: 2017-06-14
+  tags: release:pre,release:5x
+  id: 196
+197:
+  title: Rails 5.0.4 has been released
+  published_on: 2017-06-19
+  tags: release:patch,release:5x
+  id: 197
+198:
+  title: Rails 4.2.9.rc2 has been released
+  published_on: 2017-06-19
+  tags: release:pre,release:4x
+  id: 198
+199:
+  title: Rails 5.1.2.rc1 has been released
+  published_on: 2017-06-20
+  tags: release:pre,release:5x
+  id: 199
+200:
+  title: Rails 4.2.9 has been released
+  published_on: 2017-06-26
+  tags: release:patch,release:4x
+  id: 200
+201:
+  title: Rails 5.1.2 has been released
+  published_on: 2017-06-26
+  tags: release:patch,release:5x
+  id: 201
+202:
+  title: Rails 5.1.3.rc1 and 5.0.5.rc1 released
+  published_on: 2017-07-19
+  tags: release:pre,release:5x
+  id: 202
+203:
+  title: Rails 5.0.5.rc2 and 5.1.3.rc2 have been released
+  published_on: 2017-07-25
+  tags: release:pre,release:5x
+  id: 203
+204:
+  title: Rails 5.1.3 released
+  published_on: 2017-08-03
+  tags: release:patch,release:5x
+  id: 204
+205:
+  title: Rails 5.1.4.rc1 and 5.0.6.rc1 released
+  published_on: 2017-08-24
+  tags: release:pre,release:5x
+  id: 205
+207:
+  title: Rails 4.2.10.rc1 released
+  published_on: 2017-09-20
+  tags: release:pre,release:4x
+  id: 207
+208:
+  title: Rails 4.2.10 released
+  published_on: 2017-09-27
+  tags: release:patch,release:4x
+  id: 208
+209:
+  title: 'Rails 5.2.0 beta: Active Storage, Redis Cache Store, HTTP/2 Early Hints,
+    CSP, Credentials'
+  published_on: 2017-11-27
+  tags: release:pre,release:5x
+  id: 209
+210:
+  title: 'Rails 5.2.0 RC1: Active Storage, Redis Cache Store, HTTP/2 Early Hints,
+    CSP, Credentials'
+  published_on: 2018-01-31
+  tags: release:pre,release:5x
+  id: 210
+211:
+  title: Rails 5.1.5.rc1 has been released!
+  published_on: 2018-02-01
+  tags: release:pre,release:5x
+  id: 211
+212:
+  title: Rails 5.1.5 has been released
+  published_on: 2018-02-14
+  tags: release:patch,release:5x
+  id: 212
+213:
+  title: 'Rails 5.2.0 RC2: Active Storage, Redis Cache Store, HTTP/2 Early Hints,
+    CSP, Credentials'
+  published_on: 2018-03-20
+  tags: release:pre,release:5x
+  id: 213
+214:
+  title: Rails 5.0.7 and 5.1.6 have been released
+  published_on: 2018-03-29
+  tags: release:patch,release:5x
+  id: 214
+215:
+  title: 'Rails 5.2.0 FINAL: Active Storage, Redis Cache Store, HTTP/2 Early Hints,
+    CSP, Credentials'
+  published_on: 2018-04-09
+  tags: release:patch,release:5x
+  id: 215
+216:
+  title: Rails 5.2.1.rc1 has been released!
+  published_on: 2018-07-30
+  tags: release:pre,release:5x
+  id: 216
+217:
+  title: Rails 5.2.1 has been released!
+  published_on: 2018-08-07
+  tags: release:patch,release:5x
+  id: 217
+218:
+  title: Rails 4.2.11, 5.0.7.1, 5.1.6.1 and 5.2.1.1 have been released!
+  published_on: 2018-11-27
+  tags: release:revision,release:5x,release:patch,release:4x
+  id: 218
+219:
+  title: Rails 5.2.2.rc1 has been released
+  published_on: 2018-11-28
+  tags: release:pre,release:5x
+  id: 219
+220:
+  title: Rails 5.2.2 has been released!
+  published_on: 2018-12-04
+  tags: release:patch,release:5x
+  id: 220
+221:
+  title: 'Rails 6.0.0 beta1: Action Mailbox, Action Text, Multiple DBs, Parallel Testing,
+    Webpacker by default'
+  published_on: 2019-01-18
+  tags: release:pre,release:6x
+  id: 221
+222:
+  title: Zeitwerk integration in Rails 6 (Beta 2)
+  published_on: 2019-02-22
+  tags: ''
+  id: 222
+223:
+  title: Rails 6.0.0 beta2 released
+  published_on: 2019-02-25
+  tags: release:pre,release:6x
+  id: 223
+224:
+  title: Rails 4.2.11.1, 5.0.7.2, 5.1.6.2, 5.2.2.1, and 6.0.0.beta3 have been released!
+  published_on: 2019-03-13
+  tags: release:pre,release:6x,release:revision,release:4x,release:5x
+  id: 224
+225:
+  title: Rails 5.2.3.rc1 has been released!
+  published_on: 2019-03-22
+  tags: release:pre,release:5x
+  id: 225
+226:
+  title: Rails 5.1.7.rc1 has been released!
+  published_on: 2019-03-22
+  tags: release:pre,release:5x
+  id: 226
+227:
+  title: Rails 5.1.7 has been released
+  published_on: 2019-03-28
+  tags: release:patch,release:5x
+  id: 227
+228:
+  title: Rails 5.2.3 has been released
+  published_on: 2019-03-28
+  tags: release:patch,release:5x
+  id: 228
+229:
+  title: Rails 6.0.0 rc1 released
+  published_on: 2019-04-24
+  tags: release:pre,release:6x
+  id: 229
+230:
+  title: Rails 6.0.0 rc2 released
+  published_on: 2019-07-30
+  tags: release:pre,release:6x
+  id: 230
+231:
+  title: 'Rails 6.0: Action Mailbox, Action Text, Multiple DBs, Parallel Testing,
+    Webpacker by default, and Zeitwerk'
+  published_on: 2019-08-15
+  tags: release:major,release:6x
+  id: 231
+232:
+  title: Rails 6.0.1 RC1 released
+  published_on: 2019-10-31
+  tags: release:pre,release:6x
+  id: 232
+233:
+  title: Rails 6.0.1 released
+  published_on: 2019-11-05
+  tags: release:patch,release:6x
+  id: 233
+234:
+  title: Rails 5.2.4.rc1 has been released!
+  published_on: 2019-11-23
+  tags: release:pre,release:5x
+  id: 234
+235:
+  title: Rails 6.0.2.rc1 has been released!
+  published_on: 2019-11-27
+  tags: release:pre,release:6x
+  id: 235
+236:
+  title: Rails 5.2.4 has been released!
+  published_on: 2019-11-27
+  tags: release:patch,release:5x
+  id: 236
+237:
+  title: Rails 6.0.2.rc2 has been released!
+  published_on: 2019-12-09
+  tags: release:pre,release:6x
+  id: 237
+238:
+  title: Rails 6.0.2 has been released!
+  published_on: 2019-12-13
+  tags: release:patch,release:6x
+  id: 238
+239:
+  title: Rails 6.0.2.1 has been released!
+  published_on: 2019-12-18
+  tags: release:revision,release:6x
+  id: 239
+240:
+  title: Rails 5.2.4.1 has been released!
+  published_on: 2019-12-18
+  tags: release:revision,release:5x
+  id: 240
+241:
+  title: Rails 6.0.2.2 and 5.2.4.2 have been released!
+  published_on: 2020-03-19
+  tags: release:revision,release:6x,release:5x
+  id: 241
+242:
+  title: Rails 6.0.3.rc1 has been released!
+  published_on: 2020-05-01
+  tags: release:pre,release:6x
+  id: 242
+243:
+  title: Rails 6.0.3 has been released!
+  published_on: 2020-05-06
+  tags: release:patch,release:6x
+  id: 243
+244:
+  title: Rails 4.2.11.2 has been released
+  published_on: 2020-05-15
+  tags: release:revision,release:4x
+  id: 244
+245:
+  title: Rails 4.2.11.3 has been released
+  published_on: 2020-05-16
+  tags: release:revision,release:4x
+  id: 245
+246:
+  title: Rails 5.2.4.3 and 6.0.3.1 have been released
+  published_on: 2020-05-18
+  tags: release:revision,release:5x,release:6x
+  id: 246
+247:
+  title: Rails 6.0.3.2 has been released!
+  published_on: 2020-06-17
+  tags: release:revision,release:6x
+  id: 247
+248:
+  title: Rails 5.2.4.4 and 6.0.3.3 have been released
+  published_on: 2020-09-10
+  tags: release:revision,release:5x,release:6x
+  id: 248
+249:
+  title: Rails 6.0.3.4 has been released
+  published_on: 2020-10-07
+  tags: release:revision,release:6x
+  id: 249
+250:
+  title: 'Rails 6.1 RC1: Horizontal Sharding, Multi-DB Improvements, Strict Loading,
+    Destroy Associations in Background, Error Objects, and more!'
+  published_on: 2020-11-02
+  tags: release:pre,release:6x
+  id: 250
+251:
+  title: 'Rails 6.1 RC2: Horizontal Sharding, Multi-DB Improvements, Strict Loading,
+    Destroy Associations in Background, Error Objects, and more!'
+  published_on: 2020-12-01
+  tags: release:pre,release:6x
+  id: 251
+252:
+  title: 'Rails 6.1: Horizontal Sharding, Multi-DB Improvements, Strict Loading, Destroy
+    Associations in Background, Error Objects, and more!'
+  published_on: 2020-12-09
+  tags: release:minor,release:6x
+  id: 252
+253:
+  title: Rails 6.1.1 has been released
+  published_on: 2021-01-07
+  tags: release:patch,release:6x
+  id: 253
+254:
+  title: Rails 6.1.2 has been released!
+  published_on: 2021-02-09
+  tags: release:patch,release:6x
+  id: 254
+255:
+  title: Rails 5.2.4.5, 6.0.3.5 and 6.1.2.1 have been released
+  published_on: 2021-02-10
+  tags: release:revision,release:5x,release:6x
+  id: 255
+256:
+  title: Rails 6.1.3 has been released
+  published_on: 2021-02-17
+  tags: release:patch,release:6x
+  id: 256
+257:
+  title: Rails 5.2.5, 6.0.3.6 and 6.1.3.1 have been released
+  published_on: 2021-03-26
+  tags: release:revision,release:6x,release:patch,release:5x
+  id: 257
+258:
+  title: Rails versions 6.1.3.2, 6.0.3.7, 5.2.4.6, and 5.2.6 have been released!
+  published_on: 2021-05-05
+  tags: release:revision,release:6x,release:5x,release:patch
+  id: 258
+259:
+  title: Rails 6.0.4 has been released
+  published_on: 2021-06-15
+  tags: release:patch,release:6x
+  id: 259
+260:
+  title: Rails 6.1.4 has been released
+  published_on: 2021-06-24
+  tags: release:patch,release:6x
+  id: 260
+261:
+  title: 'Rails 7.0 Alpha 1: New JavaScript Answers, At-Work Encryption, Query Origin
+    Logging, Zeitwerk Exclusively'
+  published_on: 2021-09-15
+  tags: release:pre,release:7x
+  id: 261
+262:
+  title: 'Rails 7.0 RC1: New JavaScript Answers, At-Work Encryption, Query Origin
+    Logging, Zeitwerk Exclusively'
+  published_on: 2021-12-06
+  tags: release:pre,release:7x
+  id: 262
+263:
+  title: Rails 6.0.4.4, and 6.1.4.4 have been released
+  published_on: 2021-12-15
+  tags: release:revision,release:6x
+  id: 263
+264:
+  title: 'Rails 7.0: Fulfilling a vision'
+  published_on: 2021-12-15
+  tags: release:major,release:7x
+  id: 264
+265:
+  title: Rails 7.0.1 has been released
+  published_on: 2022-01-06
+  tags: release:patch,release:7x
+  id: 265
+266:
+  title: Rails 7.0.2 has been released
+  published_on: 2022-02-08
+  tags: release:patch,release:7x
+  id: 266
+267:
+  title: Rails 7.0.2.2, 6.1.4.6, 6.0.4.6, and 5.2.6.2 have been released!
+  published_on: 2022-02-11
+  tags: release:revision,release:7x,release:6x,release:5x
+  id: 267
+268:
+  title: Rails 7.0.2.3, 6.1.4.7, 6.0.4.7, and 5.2.6.3 have been released!
+  published_on: 2022-03-08
+  tags: release:revision,release:7x,release:6x,release:5x
+  id: 268
+269:
+  title: Rails 6.1.5 has been released
+  published_on: 2022-03-10
+  tags: release:patch,release:6x
+  id: 269
+270:
+  title: Rails 5.2.7 has been released
+  published_on: 2022-03-11
+  tags: release:patch,release:5x
+  id: 270
+271:
+  title: Rails 7.0.2.4, 6.1.5.1, 6.0.4.8, and 5.2.7.1 have been released!
+  published_on: 2022-04-26
+  tags: release:revision,release:7x,release:6x,release:5x
+  id: 271
+272:
+  title: Rails 7.0.3, 6.1.6, 6.0.5, and 5.2.8 have been released!
+  published_on: 2022-05-09
+  tags: release:patch,release:7x,release:6x,release:5x
+  id: 272
+273:
+  title: Rails Versions 7.0.3.1, 6.1.6.1, 6.0.5.1, and 5.2.8.1 have been released!
+  published_on: 2022-07-12
+  tags: release:revision,release:7x,release:6x,release:5x
+  id: 273
+274:
+  title: Rails 7.0.4, 6.1.7, and 6.0.6 have been released!
+  published_on: 2022-09-09
+  tags: release:patch,release:7x,release:6x
+  id: 274
+275:
+  title: Rails Versions 7.0.4.1, 6.1.7.1, and 6.0.6.1 have been released!
+  published_on: 2023-01-17
+  tags: release:revision,release:7x,release:6x
+  id: 275
+276:
+  title: Rails 7.0.4.2 and 6.1.7.2 have been released!
+  published_on: 2023-01-24
+  tags: release:revision,release:7x,release:6x
+  id: 276
+277:
+  title: Rails 7.0.4.3 and 6.1.7.3 have been released!
+  published_on: 2023-03-13
+  tags: release:revision,release:7x,release:6x
+  id: 277
+278:
+  title: Rails 7.0.5 has been released
+  published_on: 2023-05-24
+  tags: release:patch,release:7x
+  id: 278
+279:
+  title: Rails Versions 7.0.5.1, 6.1.7.4 have been released!
+  published_on: 2023-06-26
+  tags: release:revision,release:7x,release:6x
+  id: 279
+280:
+  title: Rails 7.0.6 has been released
+  published_on: 2023-06-29
+  tags: release:patch,release:7x
+  id: 280
+281:
+  title: Rails 7.0.7 has been released
+  published_on: 2023-08-10
+  tags: release:patch,release:7x
+  id: 281
+282:
+  title: Rails Versions 7.0.7.1, 6.1.7.5 have been released!
+  published_on: 2023-08-22
+  tags: release:revision,release:7x,release:6x
+  id: 282
+283:
+  title: Rails Versions 7.0.7.2, 6.1.7.6 have been released!
+  published_on: 2023-08-22
+  tags: release:revision,release:7x,release:6x
+  id: 283
+284:
+  title: Rails 7.0.8 has been released
+  published_on: 2023-09-09
+  tags: release:patch,release:7x
+  id: 284
+285:
+  title: 'Rails 7.1 Beta 1: Dockerfiles, BYO Authentication, More Async Queries, and
+    more!'
+  published_on: 2023-09-13
+  tags: release:pre,release:7x
+  id: 285
+286:
+  title: Rails 7.1 enters the Release Candidate phase
+  published_on: 2023-10-01
+  tags: release:pre,release:7x
+  id: 286
+287:
+  title: 'Rails 7.1: Dockerfiles, BYO Authentication, More Async Queries, and more!'
+  published_on: 2023-10-05
+  tags: release:minor,release:7x
+  id: 287
+288:
+  title: Rails 7.1.1 has been released!
+  published_on: 2023-10-11
+  tags: release:patch,release:7x
+  id: 288
+289:
+  title: Rails 7.1.2 has been released!
+  published_on: 2023-11-10
+  tags: release:patch,release:7x
+  id: 289
+290:
+  title: Rails 7.1.3 has been released!
+  published_on: 2024-01-16
+  tags: release:patch,release:7x
+  id: 290
+291:
+  title: Rails Versions 6.1.7.7, 7.0.8.1, and 7.1.3.2 have been released!
+  published_on: 2024-02-21
+  tags: release:revision,release:6x,release:7x
+  id: 291
+292:
+  title: Rails Versions 7.0.8.2, and 7.1.3.3 have been released!
+  published_on: 2024-05-17
+  tags: release:revision,release:7x
+  id: 292
+293:
+  title: Rails Versions 7.0.8.3 has been released!
+  published_on: 2024-05-17
+  tags: release:revision,release:7x
+  id: 293
+294:
+  title: 'Rails 7.2 Beta 1: Better production defaults, Dev containers, new guides
+    design, and more!'
+  published_on: 2024-05-29
+  tags: release:pre,release:7x
+  id: 294
+295:
+  title: Rails Versions 6.1.7.8, 7.0.8.4, 7.1.3.4, and 7.2.0.beta2 have been released!
+  published_on: 2024-06-04
+  tags: release:pre,release:7x,release:revision,release:6x
+  id: 295
+296:
+  title: 'Rails 7.2 release candidate 1: Better production defaults, Dev containers,
+    new guides design, and more!'
+  published_on: 2024-08-06
+  tags: release:pre,release:7x
+  id: 296
+297:
+  title: 'Rails 7.2: Better production defaults, Dev containers, new guides design,
+    and more!'
+  published_on: 2024-08-10
+  tags: release:minor,release:7x
+  id: 297
+298:
+  title: Rails 7.2.1 has been released!
+  published_on: 2024-08-22
+  tags: release:patch,release:7x
+  id: 298
+299:
+  title: Rails 7.1.4 has been released!
+  published_on: 2024-08-22
+  tags: release:patch,release:7x
+  id: 299
+300:
+  title: 'Rails 8.0 Beta 1: No PaaS Required'
+  published_on: 2024-09-27
+  tags: release:pre,release:8x
+  id: 300
+301:
+  title: Rails Versions 6.1.7.9, 7.0.8.5, 7.1.4.1, and 7.2.1.1 have been released!
+  published_on: 2024-10-15
+  tags: release:revision,release:6x,release:7x
+  id: 301
+302:
+  title: Rails Versions 6.1.7.10, 7.0.8.6, 7.1.4.2, and 7.2.1.2 have been released!
+  published_on: 2024-10-23
+  tags: release:revision,release:6x,release:7x
+  id: 302
+303:
+  title: Rails Versions 7.1.5 and 7.2.2 have been released!
+  published_on: 2024-10-31
+  tags: release:patch,release:7x
+  id: 303
+304:
+  title: 'Rails 8.0: No PaaS Required'
+  published_on: 2024-11-07
+  tags: release:major,release:8x
+  id: 304

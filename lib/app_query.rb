@@ -89,26 +89,20 @@ module AppQuery
       @name = name
     end
 
-    def select_all(binds: [], select: nil, qselect: nil, cast: false)
-      with(select:, qselect:).then do |aq|
+    def select_all(binds: [], select: nil, cast: false)
+      with_select(select).then do |aq|
         ActiveRecord::Base.connection.select_all(aq.to_s, name, binds).then do |result|
           Result.from_ar_result(result, cast)
         end
       end
     end
 
-    def select_one(binds: [], select: nil, qselect: nil, cast: false)
-      select_all(binds:, select:, qselect:, cast:).first || {}
+    def select_one(binds: [], select: nil, cast: false)
+      select_all(binds:, select:, cast:).first || {}
     end
 
-    def select_value(binds: [], select: nil, qselect: nil, cast: false)
-      select_one(binds:, select:, qselect:, cast:).values.first
-    end
-
-    def with(select: nil, qselect: nil)
-      self.then { select ? _1.with_select(select) : _1 }.then do |aq|
-        qselect ? aq.with_qselect(qselect) : aq
-      end
+    def select_value(binds: [], select: nil, cast: false)
+      select_one(binds:, select:, cast:).values.first
     end
 
     def tokens
@@ -124,22 +118,15 @@ module AppQuery
     end
 
     def with_select(sql)
-      self.class.new(tokens.each_with_object([]) do |token, acc|
-        v = (token[:t] == "SELECT") ? sql : token[:v]
-        acc << v
-      end.join, name: name)
-    end
-
-    # query select, i.e. select from the end result of the query.
-    # Example
-    # AppQuery("select * from (VALUES(1,'Some article'), (2, 'Another article')) dummy")
-    def with_qselect(s)
-      self.class.new(<<~SQL, name: name)
-        WITH "result" AS (
-        #{indent(@sql, 2)}
-        )
-        #{s}
-      SQL
+      return self unless sql
+      if cte_names.include?("_")
+        self.class.new(tokens.each_with_object([]) do |token, acc|
+          v = (token[:t] == "SELECT") ? sql : token[:v]
+          acc << v
+        end.join, name: name)
+      else
+        append_cte("_ as (\n  #{select}\n)").with_select(sql)
+      end
     end
 
     def select
@@ -210,6 +197,9 @@ module AppQuery
       end
 
       cte_name = to_append.find { _1[:t] == "CTE_IDENTIFIER" }&.[](:v)
+      unless cte_names.include?(cte_name)
+        raise ArgumentError, "Unknown cte #{cte_name.inspect}. Options: #{cte_names}."
+      end
       cte_ix = cte_names.index(cte_name)
 
       return self unless cte_ix
@@ -233,14 +223,6 @@ module AppQuery
 
     def to_s
       @sql
-    end
-
-    private
-
-    # Copied from Rails
-    def indent(s, amount)
-      indent_string = s[/^[ \t]/] || " "
-      s.gsub(/^(?!$)/, indent_string * amount)
     end
   end
 end

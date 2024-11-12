@@ -93,6 +93,6 @@ RSpec.configure do |config|
 =end
 
   config.before(:suite) do
-    Rails.application.load_seed
+    # Rails.application.load_seed
   end
 end

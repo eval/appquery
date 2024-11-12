@@ -15,10 +15,8 @@ ActiveRecord::Schema[8.0].define(version: 2024_11_04_112753) do
     t.string "title"
     t.string "url"
     t.date "published_on"
-    t.integer "author_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["author_id"], name: "index_articles_on_author_id"
   end
 
   create_table "articles_tags", id: false, force: :cascade do |t|
@@ -26,12 +24,6 @@ ActiveRecord::Schema[8.0].define(version: 2024_11_04_112753) do
     t.integer "tag_id"
     t.index ["article_id"], name: "index_articles_tags_on_article_id"
     t.index ["tag_id"], name: "index_articles_tags_on_tag_id"
-  end
-
-  create_table "authors", force: :cascade do |t|
-    t.string "name"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
   end
 
   create_table "tags", force: :cascade do |t|
