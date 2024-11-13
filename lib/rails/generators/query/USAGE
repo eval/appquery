@@ -1,10 +1,10 @@
 Description:
-    Generates a new query-file in app/queries and invokes your template
+    Generates a new query-file and invokes your template
     engine and test framework generators.
 
 Example:
     `bin/rails generate query reports/weekly`
 
-    creates an sql file and test:
-        Mailbox:  app/queries/reports/weekly.sql
-        Spec:     spec/queries/reports/weekly_query_spec.rb
+    creates an SQL file and test:
+        Query:  app/queries/reports/weekly.sql
+        Spec:   spec/queries/reports/weekly_query_spec.rb
