@@ -139,6 +139,28 @@ RSpec.describe AppQuery::Q do
       end
 
       describe "cast" do
+        context "results having one column" do
+          # this is special in Rails :(
+          # irb(main):013> ActiveRecord::Base.connection.select_all("select array[1,2]").rows
+          # => [["{1,2}"]]
+          # irb(main):014> ActiveRecord::Base.connection.select_all("select array[1,2]").cast_values
+          # => [[1, 2]]
+
+          it "correctly casts one column, one row" do
+            expect(app_query(<<~SQL).select_one(cast: true)).to include("a" => %w[1 2])
+            select ARRAY['1', '2'] a
+            SQL
+          end
+
+          it "correctly casts one column, multiple rows" do
+            types = {"id"=>ActiveRecord::Type::Integer.new}
+
+            expect(app_query(<<~SQL).select_all(cast: types)).to include("id" => 3)
+            select * from (values('1'), ('2'), ('3')) foo(id)
+            SQL
+          end
+        end
+
         it "casts values correctly" do
           expect(query.select_all(select: "select * from _ where id = 1", cast: true)).to \
             include(a_hash_including("tags" => %w[ruby rails]))

@@ -67,7 +67,13 @@ module AppQuery
           new(r.columns, r.rows, r.column_types)
         else
           overrides = (r.column_types || {}).merge(cast)
-          rows = r.columns.one? ? [r.cast_values(overrides)] : r.cast_values(overrides)
+          rows = r.cast_values(overrides)
+          # One column is special :( ;(
+          # > ActiveRecord::Base.connection.select_all("select array[1,2]").rows
+          # => [["{1,2}"]]
+          # > ActiveRecord::Base.connection.select_all("select array[1,2]").cast_values
+          # => [[1, 2]]
+          rows = rows.map { [_1] } if r.columns.one?
           new(r.columns, rows, overrides, cast: true)
         end
       end
@@ -227,8 +233,8 @@ module AppQuery
   end
 end
 
-def AppQuery(s)
-  AppQuery::Q.new(s)
+def AppQuery(...)
+  AppQuery::Q.new(...)
 end
 
 begin
