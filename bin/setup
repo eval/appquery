@@ -5,4 +5,4 @@ set -vx
 
 bundle install
 
-# Do any other automated setup that you need to do here
+printenv PG_DATABASE_URL || (echo -e "\e[31mSet ENV['PG_DATABASE_URL'] in order to run tests\e[0m" && exit 1)
