@@ -1,0 +1,14 @@
+-- Instantiate this query with AppQuery[<%= (class_path << file_name).join("/").inspect %>]
+
+WITH
+  articles(article_id, article_title) AS (
+    VALUES (1, 'Some title'),
+           (2, 'Another article')
+  ),
+  authors(author_id, author_name) AS (
+    VALUES (1, 'Some Author'),
+           (2, 'Another Author')
+  )
+
+SELECT *
+FROM artciles
