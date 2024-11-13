@@ -55,39 +55,70 @@ bundle add appquery
 
 ### Create
 
+> [!NOTE]
+> The included [example Rails app](./examples/ror) contains all data and queries described below.
+
 Create a query:  
 ```bash
 rails g query recent_articles
 ```
 
-Have some SQL (for PostgreSQL, in this example):
+Have some SQL (for SQLite, in this example):
 ```sql
 -- app/queries/recent_articles.sql
-WITH recent_articles(article_id, article_title) AS (
-  SELECT id, title
-  FROM articles
-  WHERE published_at > COALESCE($1::timestamp, NOW() - '3 month'::interval)
+WITH settings(default_min_published_on) as (
+  values(datetime('now', '-6 months'))
 ),
-authors_by_article(article_id, authors) AS (
-  SELECT articles_authors.article_id, array_agg(authors.name)
-  FROM articles_authors
-  JOIN authors ON articles_authors.author_id=authors.id
-  GROUP BY articles_authors.article_id
+
+recent_articles(article_id, article_title, article_published_on, article_url) AS (
+  SELECT id, title, published_on, url
+  FROM articles
+  RIGHT JOIN settings
+  WHERE published_on > COALESCE(?1, settings.default_min_published_on)
+),
+
+tags_by_article(article_id, tags) AS (
+  SELECT articles_tags.article_id,
+    json_group_array(tags.name) AS tags
+  FROM articles_tags
+  JOIN tags ON articles_tags.tag_id = tags.id
+  GROUP BY articles_tags.article_id
 )
+
 SELECT recent_articles.*,
-  -- sort authors alphabetically
-  array_to_string(array(select unnest(authors_by_article.authors) order by 1), ', ') AS authors
+       group_concat(json_each.value, ',' ORDER BY value ASC) tags_str
 FROM recent_articles
-JOIN authors_by_article USING(article_id)
+JOIN tags_by_article USING(article_id),
+  json_each(tags)
+WHERE EXISTS (
+  SELECT 1
+  FROM json_each(tags)
+  WHERE json_each.value LIKE ?2 OR ?2 IS NULL
+)
+GROUP BY recent_articles.article_id
+ORDER BY recent_articles.article_published_on
 ```
 
-Even for this trivial query, there's already quite some things 'encoded' that we might want to verify or capture in tests:
+The result would look like this:
+
+```ruby
+[{"article_id"=>292,
+ "article_title"=>"Rails Versions 7.0.8.2, and 7.1.3.3 have been released!",
+ "article_published_on"=>"2024-05-17",
+ "article_url"=>"https://rubyonrails.org/2024/5/17/Rails-Versions-7-0-8-2-and-7-1-3-3-have-been-released",
+ "tags_str"=>"release:7x,release:revision"},
+...
+]
+```
+
+Even for this fairly trivial query, there's already quite some things 'encoded' that we might want to verify or capture in tests:
 - only certain columns
 - only published articles
-- only articles _with_ authors
+- only articles _with_ tags
 - only articles published after some date
   - either provided or using the default
-- authors appear in a certain order and are formatted a certain way
+- articles are sorted in a certain order
+- tags appear in a certain order and are formatted a certain way
 
 Using the SQL-rewriting capabilities shown below, this library allows you to express these assertions in tests or verify them during development.
 
@@ -99,19 +130,32 @@ Using the SQL-rewriting capabilities shown below, this library allows you to exp
 
 Given the query above, you can get the result like so:
 ```ruby
-AppQuery[:recent_articles].select_all(binds: [nil]).entries
-# => [{"article_id" => 1, "article_title" => "Some title", "authors" => "{Foo, Baz}"}, ...]
+AppQuery[:recent_articles].select_all.entries
+# =>
+[{"article_id"=>292,
+ "article_title"=>"Rails Versions 7.0.8.2, and 7.1.3.3 have been released!",
+ "article_published_on"=>"2024-05-17",
+ "article_url"=>"https://rubyonrails.org/2024/5/17/Rails-Versions-7-0-8-2-and-7-1-3-3-have-been-released",
+ "tags_str"=>"release:7x,release:revision"},
+...
+]
+
+# we can provide a different cut off date via binds^1:
 AppQuery[:recent_articles].select_all(binds: [1.month.ago]).entries
+
+1) note that SQLite can deal with unbound parameters, i.e. when no binds are provided it assumes null for $1 and $2 (which our query can deal with).
+  For Postgres you would always need to provide 2 values, e.g. `binds: [nil, nil]`.
 ```
 
-Or query the result using the added CTE named `_`:
+We can also dig deeper by query-ing the result, i.e. the CTE `_`:
 
 ```ruby
-AppQuery[:recent_articles].select_one(select: "select count(*) as cnt from _", binds: [nil])
-# => {"cnt" => 1}
-# As we're only interested in the value, we can also use select_value (and skip the column alias):
-AppQuery[:recent_articles].select_value(select: "select count(*) from _", binds: [nil])
-# => 1
+AppQuery[:recent_articles].select_one(select: "select count(*) as cnt from _")
+# => {"cnt" => 13}
+
+# For these kind of aggregate queries, we're only interested in the value:
+AppQuery[:recent_articles].select_value(select: "select count(*) from _")
+# => 13
 ```
 
 Use `AppQuery#with_select` to get a new AppQuery-instance with the rewritten SQL:
@@ -122,26 +166,40 @@ puts AppQuery[:recent_articles].with_select("select * from _")
 
 ### Verify CTE results
 
-You can select from a CTE similarly`:
+You can select from a CTE similarly:
 ```ruby
-AppQuery[:recent_articles].select_all(select: "SELECT * FROM authors_by_article", binds: [nil], cast: true)
-# => [{"article_id" => 1, "authors" => ["Foo", "Baz"]}, ...]
-# NOTE: the cast keyword ensures a proper authors-array
+AppQuery[:recent_articles].select_all(select: "SELECT * FROM tags_by_article")
+# => [{"article_id"=>1, "tags"=>"[\"release:pre\",\"release:patch\",\"release:1x\"]"},
+      ...]
+
+# NOTE how the tags are json strings. Casting allows us to turn these into proper arrays^1:
+types = {"tags" => ActiveRecord::Type::Json.new}
+AppQuery[:recent_articles].select_all(select: "SELECT * FROM tags_by_article", cast: types)
+
+1) PostgreSQL, unlike SQLite, has json and array types. Just casting suffices:
+AppQuery("select json_build_object('a', 1, 'b', true)").select_one(cast: true)
+# => {"json_build_object"=>{"a"=>1, "b"=>true}}
 ```
 
-By adding CTEs we can even mock some values:
-```ruby
-AppQuery[:recent_articles]
-  .prepend_cte("articles AS(VALUES(1, 'Some title', NOW() - '4 month'::interval))")
-  .select_all(binds: [nil])
+Using the methods `(prepend|append|replace)_cte`, we can rewrite the query beyond just the select:
 
+```ruby
+AppQuery[:recent_articles].replace_cte(<<~SQL).select_all.entries
+settings(default_min_published_on) as (
+  values(datetime('now', '-12 months'))
+)
+SQL
+```
+
+You could even mock existing tables (using PostgreSQL):
+```ruby
 # using Ruby data:
-sample_articles = [{id: 1, title: "Some title", published_at: 3.months.ago},
-                   {id: 2, title: "Another title", published_at: 1.months.ago}]
+sample_articles = [{id: 1, title: "Some title", published_on: 3.months.ago},
+                   {id: 2, title: "Another title", published_on: 1.months.ago}]
 # show the provided cutoff date works
-AppQuery[:recent_articles].prepend_cte(<<-CTE).select_all(binds: [6.weeks.ago, JSON[sample_articles]).entries
+AppQuery[:recent_articles].prepend_cte(<<-CTE).select_all(binds: [6.weeks.ago, nil, JSON[sample_articles]).entries
   articles AS (
-    SELECT * from json_to_recordset($2) AS x(id int, title text, published_at timestamp)
+    SELECT * from json_to_recordset($3) AS x(id int, title text, published_on timestamp)
   )
 CTE
 ```
