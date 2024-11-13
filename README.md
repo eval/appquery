@@ -453,7 +453,7 @@ Returns new instance with replaced CTE. Raises `ArgumentError` when CTE does not
 ### Examples
 
 ```ruby
-query.replace_cte("recent_articles as (values(1, 'Some article'))")
+query.replace_cte("recent_articles as (select values(1, 'Some article'))")
 ```
 
 </details>

@@ -194,8 +194,8 @@ module AppQuery
       end
     end
 
-    # Replaces an existing cte with the same name.
-    # Does nothing if cte does not exist.
+    # Replaces an existing cte.
+    # Raises `ArgumentError` when cte does not exist.
     def replace_cte(cte)
       add_recursive, to_append = Tokenizer.tokenize(cte, state: :lex_recursive_cte).then do |tokens|
         [!recursive? && tokens.find { _1[:t] == "RECURSIVE" },
