@@ -53,8 +53,6 @@ bundle add appquery
 > [!NOTE]
 > The following (trivial) examples are not meant to convince you to ditch your ORM, but just to show how this gem handles raw SQL queries.
 
-Find a 
-
 ### Create
 
 Create a query:  
@@ -62,7 +60,7 @@ Create a query:
 rails g query recent_articles
 ```
 
-Have some SQL (for PostgreSQL):
+Have some SQL (for PostgreSQL, in this example):
 ```sql
 -- app/queries/recent_articles.sql
 WITH recent_articles(article_id, article_title) AS (
@@ -88,7 +86,7 @@ Even for this trivial query, there's already quite some things 'encoded' that we
 - only published articles
 - only articles _with_ authors
 - only articles published after some date
-  - either a provided date or a fallback date
+  - either provided or using the default
 - authors appear in a certain order and are formatted a certain way
 
 Using the SQL-rewriting capabilities shown below, this library allows you to express these assertions in tests or verify them during development.
@@ -401,6 +399,13 @@ query.replace_cte("recent_articles as (values(1, 'Some article'))")
 ```
 
 </details>
+
+## Compatibility
+
+- 💾 tested with **SQLite** and **PostgreSQL**
+- 🚆 tested with Rails **v6.1**, **v7** and **v8.0**
+- 💎 requires Ruby **>v3.1**  
+  Goal is to support [maintained Ruby versions](https://www.ruby-lang.org/en/downloads/branches/).
 
 ## Development
 
