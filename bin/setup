@@ -5,4 +5,5 @@ set -vx
 
 bundle install
 
+[ ! -e .envrc.private ] && cp .envrc.private.example .envrc.private
 printenv PG_DATABASE_URL || (echo -e "\e[31mSet ENV['PG_DATABASE_URL'] in order to run tests\e[0m" && exit 1)
