@@ -148,15 +148,15 @@ RSpec.describe AppQuery::Q do
 
           it "correctly casts one column, one row" do
             expect(app_query(<<~SQL).select_one(cast: true)).to include("a" => %w[1 2])
-            select ARRAY['1', '2'] a
+              select ARRAY['1', '2'] a
             SQL
           end
 
           it "correctly casts one column, multiple rows" do
-            types = {"id"=>ActiveRecord::Type::Integer.new}
+            types = {"id" => ActiveRecord::Type::Integer.new}
 
             expect(app_query(<<~SQL).select_all(cast: types)).to include("id" => 3)
-            select * from (values('1'), ('2'), ('3')) foo(id)
+              select * from (values('1'), ('2'), ('3')) foo(id)
             SQL
           end
         end
