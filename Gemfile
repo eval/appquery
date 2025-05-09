@@ -11,11 +11,11 @@ gem "rspec", "~> 3.0"
 
 gem "standard", "~> 1.3"
 
-# prevent warning "fiddle was loaded from the standard library"
+# prevent warning "X was loaded from the standard library"
 gem "fiddle"
-
-# prevent warning "rdoc was loaded from the standard library"
 gem "rdoc"
+gem "benchmark"
+gem "irb"
 
 gem "activerecord"
 gem "pg"
