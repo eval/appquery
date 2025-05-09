@@ -469,7 +469,7 @@ query.replace_cte("recent_articles as (select values(1, 'Some article'))")
 
 After checking out the repo, run `bin/setup` to install dependencies. **Make sure to check it exits with status code 0.**
 
-Using [direnv](https://direnv.net/) for env-vars recommended.
+Using [mise](https://mise.jdx.dev/) for env-vars recommended.
 
 
 Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
