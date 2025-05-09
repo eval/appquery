@@ -38,7 +38,9 @@ jobs:
       with:
         ruby-version: ${{ matrix.ruby }}
         bundler-cache: true
+    - name: Setup appraisal
+      run: bin/appraisal install
     - name: Run the default task
-      run: bundle exec rake
+      run: bin/appraisal rake
       env:
         PG_DATABASE_URL: "postgres://postgres:secret@localhost:5432/postgres"

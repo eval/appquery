@@ -13,3 +13,4 @@
 
 Gemfile.lock
 /mise.local.toml
+/gemfiles/*.gemfile.lock
