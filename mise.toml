@@ -1,0 +1,3 @@
+[env]
+_.path = ["bin"]
+PROJECT_ROOT = "{{config_root}}"
