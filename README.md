@@ -58,6 +58,38 @@ bundle add appquery
 > [!NOTE]
 > The following (trivial) examples are not meant to convince you to ditch your ORM, but just to show how this gem handles raw SQL queries.
 
+### One-offs
+
+Once installed, play around on the Rails console (this assumes Postgres):
+
+```ruby
+> AppQuery(%{select date('now') as today}).select_all.to_a
+=> [{"today" => "2025-05-10"}]
+> AppQuery(%{select date('now') as today}).select_one
+=> {"today" => "2025-05-10"}
+> AppQuery(%{select date('now') as today}).select_value
+=> "2025-05-10"
+
+# casting
+> AppQuery(%{select date('now') as today}).select_all(cast: true).to_a
+=> [{"today" => Sat, 10 May 2025}]
+
+# rewriting
+q = AppQuery(<<~SQL)
+  with articles(id,title,published_on) as (
+    values(1, 'Some title', '2024-3-31'),
+          (2, 'Other title', '2024-10-31'))
+  select * from articles order by id DESC
+SQL
+
+## query the articles-CTE
+q.select_all(select: %{select * from articles where id < 2}).to_a
+
+## query the query (available as a CTE named '_')
+q.select_all(select: %{select * from _ limit 1}).to_a
+```
+
+
 ### Create
 
 > [!NOTE]
