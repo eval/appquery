@@ -38,7 +38,12 @@ Specifically it provides:
 
 > [!IMPORTANT]  
 > **Status**: alpha. API might change. See the CHANGELOG for breaking changes when upgrading.
->  
+>
+
+## Rationale
+
+Sometimes ActiveRecord doesn't cut it and you'd rather use raw SQL. That introduces some new problems. First of all, you'll run into the not so intuitive use of `select_(all|one|value)` (e.g. how they differ wrt casting, and have differences between AR-versions). Then there's the testability, introspection and maintainability of a resulting SQL-query.  
+This library aims to alleviate all of these issues by having a consistent interface between `select_*`'s and between AR-versions. It should make inspecting/testing queries easier, especially when these are built up from CTE's.
 
 ## Installation
 
@@ -462,7 +467,7 @@ query.replace_cte("recent_articles as (select values(1, 'Some article'))")
 
 - 💾 tested with **SQLite** and **PostgreSQL**
 - 🚆 tested with Rails **v6.1**, **v7** and **v8.0**
-- 💎 requires Ruby **>v3.1**  
+- 💎 requires Ruby **>v3.2**  
   Goal is to support [maintained Ruby versions](https://www.ruby-lang.org/en/downloads/branches/).
 
 ## Development
@@ -483,4 +488,3 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/eval/a
 ## License
 
 The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
-
