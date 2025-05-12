@@ -76,6 +76,14 @@ The following example assumes PostgreSQL:
 > AppQuery(%{select date('now') as today}).select_all(cast: true).to_a
 => [{"today" => Sat, 10 May 2025}]
 
+## SQLite doesn't have a notion of dates or timestamp's so casting won't do anything:
+> AppQuery(%{select date('now') as today}).select_one(cast: true)
+=> {"today" => "2025-05-12"}
+## Providing per-column-casts fixes this:
+casts = {"today" => ActiveRecord::Type::Date.new}
+> AppQuery(%{select date('now') as today}).select_one(cast: casts)
+=> {"today" => Mon, 12 May 2025}
+
 # rewriting queries (using CTEs)
 q = AppQuery(<<~SQL)
   WITH articles(id,title,published_on) AS (
@@ -87,7 +95,7 @@ SQL
 ## query the articles-CTE
 q.select_all(select: %{select * from articles where id < 2}).to_a
 
-## query the query (available as a CTE named '_')
+## query the end-result (available as the CTE named '_')
 q.select_one(select: %{select * from _ limit 1})
 ```
 
