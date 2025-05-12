@@ -33,7 +33,7 @@ Gem::Specification.new do |spec|
   DESC
   spec.homepage = "https://github.com/eval/appquery"
   spec.license = "MIT"
-  spec.required_ruby_version = ">= 3.1.0"
+  spec.required_ruby_version = ">= 3.2.0"
 
   # spec.metadata["allowed_push_host"] = "TODO: Set to your gem server 'https://example.com'"
 
@@ -47,7 +47,7 @@ Gem::Specification.new do |spec|
   spec.files = IO.popen(%w[git ls-files -z], chdir: __dir__, err: IO::NULL) do |ls|
     ls.readlines("\x0", chomp: true).reject do |f|
       (f == gemspec) ||
-        f.start_with?(*%w[bin/ test/ spec/ features/ examples/ .git .github appveyor Gemfile])
+        f.start_with?(*%w[bin/ test/ spec/ features/ examples/ .git .github appveyor Gemfile gemfiles/ tmp/])
     end
   end
   spec.bindir = "exe"
@@ -56,6 +56,8 @@ Gem::Specification.new do |spec|
 
   # Uncomment to register a new dependency of your gem
   # spec.add_dependency "example-gem", "~> 1.0"
+
+  spec.add_development_dependency "appraisal"
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html

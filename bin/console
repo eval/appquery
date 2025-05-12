@@ -1,11 +1,85 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+# Helper method to wrap text with ANSI escape codes
+def ansi_wrap(text, color_code)
+  case color_code
+  when "plain" then text
+  else
+    "\e[#{color_code}m#{text}\e[0m"
+  end
+end
+
+def ansi_escape(a)
+  color, *tail = a
+  tail.map { ansi_wrap(_1.is_a?(Array) ? ansi_escape(_1) : _1, color) }.join
+end
+
+def log(...)
+  puts ansi_escape(...)
+end
+
+# Color variables (safe on both white and black backgrounds)
+@green   = 32
+@blue    = 34
+@magenta = 35
+@yellow  = 33
+@bold    = 1
+@plain   = 0
+
+def help?
+  (ARGV & %w[--help -h]).any?
+end
+
+def print_help
+log [@plain, "
+", [@bold, "USAGE"], "
+  $ ./bin/setup [OPTIONS] [DATABASE_URL]
+
+", [@bold, "OPTIONS"], "
+  --help / -h   This menu
+
+", [@bold, "DATABASE_URL"], "
+", [@magenta, "Sets up a connection when provided."], "
+
+  Example values:
+    sqlite3::memory: - in-memory SQLite database
+    sqlite3:tmp/some.db - on-disk SQLite database (new or existing)
+    postgres://localhost:5432/some_db - some PostgreSQL database
+"]
+end
+
+if help?
+  print_help
+  exit
+end
+
 require "bundler/setup"
 require "app_query"
 
 # You can add fixtures and/or initialization code here to make experimenting
 # with your gem easier. You can also use a different console, if you like.
 
+log [@magenta, "👋 Welcome to ", [@bold, "AppQuery"], " - Turning 🥦 raw queries into 🍜"]
+
+
+# `env DATABASE_URL= console` skips db-setup
+if url = (ARGV.shift || (!ENV["DATABASE_URL"]&.empty? && ENV["DATABASE_URL"]))
+  log [@yellow, "🔌 Connecting to #{url.inspect}... 🚀"]
+  ActiveRecord::Base.logger = Logger.new(STDOUT)
+
+  ActiveRecord::Base.establish_connection(url:)
+else
+  log [@blue, "❌ ENV['DATABASE_URL'] not found - skipping database setup."]
+MSG
+end
+
+def reload!
+  load Bundler.root.join("lib/app_query.rb").to_s
+end
+log [@yellow, "🛠️ Use `reload!` after making code changes"]
+
+# not meant as a helper
+undef :ansi_wrap, :ansi_escape
 require "irb"
 IRB.start(__FILE__)

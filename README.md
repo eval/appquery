@@ -2,7 +2,7 @@
 
 [![Gem Version](https://badge.fury.io/rb/appquery.svg)](https://badge.fury.io/rb/appquery)
 
-A Rubygem :gem: that makes working with raw SQL queries in Rails projects more convenient.  
+A Rubygem :gem: that makes working with raw SQL (READ) queries in Rails projects more convenient.  
 Specifically it provides:
 - **...a dedicated folder for queries**  
   e.g. `app/queries/reports/weekly.sql` is instantiated via `AppQuery["reports/weekly"]`.
@@ -38,7 +38,12 @@ Specifically it provides:
 
 > [!IMPORTANT]  
 > **Status**: alpha. API might change. See the CHANGELOG for breaking changes when upgrading.
->  
+>
+
+## Rationale
+
+Sometimes ActiveRecord doesn't cut it, and you'd rather use raw SQL to get the right data out. That, however, introduces some new problems. First of all, you'll run into the not-so-intuitive use of [select_(all|one|value)](https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/DatabaseStatements.html#method-i-select_all) — for example, how they differ with respect to type casting, and how their behavior can vary between ActiveRecord versions. Then there's the testability, introspection, and maintainability of the resulting SQL queries.  
+This library aims to alleviate all of these issues by providing a consistent interface across select_* methods and ActiveRecord versions. It should make inspecting and testing queries easier—especially when they're built from CTEs.
 
 ## Installation
 
@@ -53,7 +58,49 @@ bundle add appquery
 > [!NOTE]
 > The following (trivial) examples are not meant to convince you to ditch your ORM, but just to show how this gem handles raw SQL queries.
 
-### Create
+### ...from console
+
+Testdriving can be easily done from the console. Either by cloning this repository (see `Development`-section) or installing the gem in an existing Rails project.  
+The following example assumes PostgreSQL:
+
+```ruby
+# showing select_(all|one|value)
+> AppQuery(%{select date('now') as today}).select_all.to_a
+=> [{"today" => "2025-05-10"}]
+> AppQuery(%{select date('now') as today}).select_one
+=> {"today" => "2025-05-10"}
+> AppQuery(%{select date('now') as today}).select_value
+=> "2025-05-10"
+
+# casting
+> AppQuery(%{select date('now') as today}).select_all(cast: true).to_a
+=> [{"today" => Sat, 10 May 2025}]
+
+## SQLite doesn't have a notion of dates or timestamp's so casting won't do anything:
+> AppQuery(%{select date('now') as today}).select_one(cast: true)
+=> {"today" => "2025-05-12"}
+## Providing per-column-casts fixes this:
+casts = {"today" => ActiveRecord::Type::Date.new}
+> AppQuery(%{select date('now') as today}).select_one(cast: casts)
+=> {"today" => Mon, 12 May 2025}
+
+# rewriting queries (using CTEs)
+q = AppQuery(<<~SQL)
+  WITH articles(id,title,published_on) AS (
+    values(1, 'Some title', '2024-3-31'),
+          (2, 'Other title', '2024-10-31'))
+  select * from articles order by id DESC
+SQL
+
+## query the articles-CTE
+q.select_all(select: %{select * from articles where id < 2}).to_a
+
+## query the end-result (available as the CTE named '_')
+q.select_one(select: %{select * from _ limit 1})
+```
+
+
+### ...in a Rails project
 
 > [!NOTE]
 > The included [example Rails app](./examples/ror) contains all data and queries described below.
@@ -462,17 +509,28 @@ query.replace_cte("recent_articles as (select values(1, 'Some article'))")
 
 - 💾 tested with **SQLite** and **PostgreSQL**
 - 🚆 tested with Rails **v6.1**, **v7** and **v8.0**
-- 💎 requires Ruby **>v3.1**  
+- 💎 requires Ruby **>v3.2**  
   Goal is to support [maintained Ruby versions](https://www.ruby-lang.org/en/downloads/branches/).
 
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. **Make sure to check it exits with status code 0.**
 
-Using [direnv](https://direnv.net/) for env-vars recommended.
+Using [mise](https://mise.jdx.dev/) for env-vars recommended.
 
+### console
 
-Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+The [console-script](./bin/console) is setup such that it's easy to connect with a database and experiment with the library:
+```bash
+$ ./bin/console sqlite3::memory:
+
+# more details
+$ ./bin/console -h
+```
+
+### various
+
+Run `rake spec` to run the tests.
 
 To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
 
@@ -483,4 +541,3 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/eval/a
 ## License
 
 The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
-

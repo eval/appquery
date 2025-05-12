@@ -73,7 +73,7 @@ module AppQuery
           # => [["{1,2}"]]
           # > ActiveRecord::Base.connection.select_all("select array[1,2]").cast_values
           # => [[1, 2]]
-          rows = rows.map { [_1] } if r.columns.one?
+          rows = rows.zip if r.columns.one?
           new(r.columns, rows, overrides, cast: true)
         end
       end
