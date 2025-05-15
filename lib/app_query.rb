@@ -50,8 +50,8 @@ module AppQuery
       rows.map { _1[ix] }
     end
 
-    def count
-      size
+    def size
+      count
     end
 
     def self.from_ar_result(r, cast = nil)
