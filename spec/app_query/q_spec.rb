@@ -110,7 +110,7 @@ RSpec.describe AppQuery::Q do
   end
 
   describe "query execution" do
-    before { ActiveRecord::Base.establish_connection(url: ENV["PG_DATABASE_URL"]) }
+    before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
 
     def query
       app_query(<<~SQL)

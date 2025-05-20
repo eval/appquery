@@ -43,4 +43,4 @@ jobs:
     - name: Run the default task
       run: bin/appraisal rake
       env:
-        PG_DATABASE_URL: "postgres://postgres:secret@localhost:5432/postgres"
+        SPEC_DATABASE_URL: "postgres://postgres:secret@localhost:5432/postgres"

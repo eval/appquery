@@ -39,5 +39,23 @@ SETTINGS
     end
   end
 
-  # TODO articles without tags are not included (e.g. article_id=13)
+  describe "end result" do
+    it "excludes articles without tags" do
+      article = Article.create!(title: 'No tags article', published_on: 1.day.ago)
+
+      article_finder = -> {
+        select_value(select: <<~SQL, binds: [*default_binds, article.id]) == 1
+          SELECT EXISTS(
+            SELECT 1
+            FROM _
+            WHERE article_id=?3
+          ) AS found
+SQL
+      }
+
+      expect {
+        article.tags.create(name: "tag")
+      }.to change { article_finder.call  }.from(false).to(true)
+    end
+  end
 end
