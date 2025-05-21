@@ -106,8 +106,20 @@ module AppQuery
       @filename = filename
     end
 
+    def deep_dup
+      super.send(:reset!)
+    end
+
+    def reset!
+      (instance_variables - %i[@sql @filename @name]).each do
+        instance_variable_set(_1, nil)
+      end
+      self
+    end
+    private :reset!
+
     def render(params)
-      self.class.new(to_erb.result(render_helper(params).get_binding))
+      with_sql(to_erb.result(render_helper(params).get_binding))
     end
 
     def to_erb
@@ -179,13 +191,19 @@ module AppQuery
       tokens.filter { _1[:t] == "CTE_IDENTIFIER" }.map { _1[:v] }
     end
 
+    def with_sql(sql)
+      deep_dup.tap do
+        _1.instance_variable_set(:@sql, sql)
+      end
+    end
+
     def with_select(sql)
-      return self unless sql
+      return self if sql.nil?
       if cte_names.include?("_")
-        self.class.new(tokens.each_with_object([]) do |token, acc|
+        with_sql(tokens.each_with_object([]) do |token, acc|
           v = (token[:t] == "SELECT") ? sql : token[:v]
           acc << v
-        end.join, name: name)
+        end.join)
       else
         append_cte("_ as (\n  #{select}\n)").with_select(sql)
       end
@@ -208,10 +226,10 @@ module AppQuery
       end
 
       if cte_names.none?
-        self.class.new("WITH #{cte}\n#{self}")
+        with_sql("WITH #{cte}\n#{self}")
       else
         split_at_type = recursive? ? "RECURSIVE" : "WITH"
-        self.class.new(tokens.map do |token|
+        with_sql(tokens.map do |token|
           if token[:t] == split_at_type
             token[:v] + to_append.map { _1[:v] }.join
           else
@@ -231,11 +249,11 @@ module AppQuery
       end
 
       if cte_names.none?
-        self.class.new("WITH #{cte}\n#{self}")
+        with_sql("WITH #{cte}\n#{self}")
       else
         nof_ctes = cte_names.size
 
-        self.class.new(tokens.map do |token|
+        with_sql(tokens.map do |token|
           nof_ctes -= 1 if token[:t] == "CTE_SELECT"
 
           if nof_ctes.zero?
@@ -268,7 +286,7 @@ module AppQuery
 
       cte_found = false
 
-      self.class.new(tokens.map do |token|
+      with_sql(tokens.map do |token|
         if cte_found ||= token[:t] == "CTE_IDENTIFIER" && token[:v] == cte_name
           unless (cte_found = (token[:t] != "CTE_SELECT"))
             next to_append.map { _1[:v] }.join
