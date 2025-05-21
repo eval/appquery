@@ -167,7 +167,9 @@ module AppQuery
           Result.from_ar_result(result, cast)
         end
       end
-    rescue NameError
+    rescue NameError => e
+      # Prevent any subclasses, e.g. NoMethodError
+      raise e unless e.instance_of?(NameError)
       raise UnrenderedQueryError, "Query is ERB. Use #render before select-ing."
     end
 
