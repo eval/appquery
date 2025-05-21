@@ -98,12 +98,13 @@ module AppQuery
   end
 
   class Q
-    attr_reader :name, :sql
+    attr_reader :name, :sql, :binds
 
-    def initialize(sql, name: nil, filename: nil)
+    def initialize(sql, name: nil, filename: nil, binds: [])
       @sql = sql
       @name = name
       @filename = filename
+      @binds = binds
     end
 
     def deep_dup
@@ -111,7 +112,7 @@ module AppQuery
     end
 
     def reset!
-      (instance_variables - %i[@sql @filename @name]).each do
+      (instance_variables - %i[@sql @filename @name @binds]).each do
         instance_variable_set(_1, nil)
       end
       self
@@ -119,6 +120,7 @@ module AppQuery
     private :reset!
 
     def render(params)
+      params ||= []
       with_sql(to_erb.result(render_helper(params).get_binding))
     end
 
@@ -162,6 +164,7 @@ module AppQuery
     private :render_helper
 
     def select_all(binds: [], select: nil, cast: false)
+      binds = binds.presence || @binds
       with_select(select).render({}).then do |aq|
         ActiveRecord::Base.connection.select_all(aq.to_s, name, binds).then do |result|
           Result.from_ar_result(result, cast)
@@ -191,6 +194,12 @@ module AppQuery
 
     def cte_names
       tokens.filter { _1[:t] == "CTE_IDENTIFIER" }.map { _1[:v] }
+    end
+
+    def with_binds(binds)
+      deep_dup.tap do
+        _1.instance_variable_set(:@binds, binds)
+      end
     end
 
     def with_sql(sql)
