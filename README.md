@@ -115,8 +115,10 @@ q2 = q.with_select("select id,title,published_on::date from articles <%= order_b
 q2.render(order: {"published_on::date": :desc, 'lower(title)': "asc"}).select_all(cast: true).entries
 # shows latest articles first, and titles sorted alphabetically
 # for articles published on the same date.
-# order_by raises when it's passed something that would result in just `ORDER BY`
+# order_by raises when it's passed something that would result in just `ORDER BY`:
 q2.render(order: {})
+# doing a select using a query that should be rendered, a AppQuery::UnrenderedQueryError will be raised:
+q2.select_all.entries
 
 # NOTE you can use both `order` and `@order`: local variables like `order` are required,
 # while instance variables like `@order` are optional.
