@@ -178,11 +178,11 @@ module AppQuery
     end
 
     def select_one(binds: [], select: nil, cast: self.cast)
-      select_all(binds:, select:, cast:).first || {}
+      select_all(binds:, select:, cast:).first
     end
 
     def select_value(binds: [], select: nil, cast: self.cast)
-      select_one(binds:, select:, cast:).values.first
+      select_one(binds:, select:, cast:)&.values&.first
     end
 
     def tokens
