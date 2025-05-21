@@ -98,16 +98,31 @@ module AppQuery
   end
 
   class Q
-    attr_reader :name, :sql
+    attr_reader :name, :sql, :binds, :cast
 
-    def initialize(sql, name: nil, filename: nil)
+    def initialize(sql, name: nil, filename: nil, binds: [], cast: true)
       @sql = sql
       @name = name
       @filename = filename
+      @binds = binds
+      @cast = cast
     end
 
+    def deep_dup
+      super.send(:reset!)
+    end
+
+    def reset!
+      (instance_variables - %i[@sql @filename @name @binds @cast]).each do
+        instance_variable_set(_1, nil)
+      end
+      self
+    end
+    private :reset!
+
     def render(params)
-      self.class.new(to_erb.result(render_helper(params).get_binding))
+      params ||= []
+      with_sql(to_erb.result(render_helper(params).get_binding))
     end
 
     def to_erb
@@ -149,22 +164,25 @@ module AppQuery
     end
     private :render_helper
 
-    def select_all(binds: [], select: nil, cast: false)
+    def select_all(binds: [], select: nil, cast: self.cast)
+      binds = binds.presence || @binds
       with_select(select).render({}).then do |aq|
         ActiveRecord::Base.connection.select_all(aq.to_s, name, binds).then do |result|
           Result.from_ar_result(result, cast)
         end
       end
-    rescue NameError
+    rescue NameError => e
+      # Prevent any subclasses, e.g. NoMethodError
+      raise e unless e.instance_of?(NameError)
       raise UnrenderedQueryError, "Query is ERB. Use #render before select-ing."
     end
 
-    def select_one(binds: [], select: nil, cast: false)
-      select_all(binds:, select:, cast:).first || {}
+    def select_one(binds: [], select: nil, cast: self.cast)
+      select_all(binds:, select:, cast:).first
     end
 
-    def select_value(binds: [], select: nil, cast: false)
-      select_one(binds:, select:, cast:).values.first
+    def select_value(binds: [], select: nil, cast: self.cast)
+      select_one(binds:, select:, cast:)&.values&.first
     end
 
     def tokens
@@ -179,13 +197,31 @@ module AppQuery
       tokens.filter { _1[:t] == "CTE_IDENTIFIER" }.map { _1[:v] }
     end
 
+    def with_binds(binds)
+      deep_dup.tap do
+        _1.instance_variable_set(:@binds, binds)
+      end
+    end
+
+    def with_cast(cast)
+      deep_dup.tap do
+        _1.instance_variable_set(:@cast, cast)
+      end
+    end
+
+    def with_sql(sql)
+      deep_dup.tap do
+        _1.instance_variable_set(:@sql, sql)
+      end
+    end
+
     def with_select(sql)
-      return self unless sql
+      return self if sql.nil?
       if cte_names.include?("_")
-        self.class.new(tokens.each_with_object([]) do |token, acc|
+        with_sql(tokens.each_with_object([]) do |token, acc|
           v = (token[:t] == "SELECT") ? sql : token[:v]
           acc << v
-        end.join, name: name)
+        end.join)
       else
         append_cte("_ as (\n  #{select}\n)").with_select(sql)
       end
@@ -208,10 +244,10 @@ module AppQuery
       end
 
       if cte_names.none?
-        self.class.new("WITH #{cte}\n#{self}")
+        with_sql("WITH #{cte}\n#{self}")
       else
         split_at_type = recursive? ? "RECURSIVE" : "WITH"
-        self.class.new(tokens.map do |token|
+        with_sql(tokens.map do |token|
           if token[:t] == split_at_type
             token[:v] + to_append.map { _1[:v] }.join
           else
@@ -231,11 +267,11 @@ module AppQuery
       end
 
       if cte_names.none?
-        self.class.new("WITH #{cte}\n#{self}")
+        with_sql("WITH #{cte}\n#{self}")
       else
         nof_ctes = cte_names.size
 
-        self.class.new(tokens.map do |token|
+        with_sql(tokens.map do |token|
           nof_ctes -= 1 if token[:t] == "CTE_SELECT"
 
           if nof_ctes.zero?
@@ -268,7 +304,7 @@ module AppQuery
 
       cte_found = false
 
-      self.class.new(tokens.map do |token|
+      with_sql(tokens.map do |token|
         if cte_found ||= token[:t] == "CTE_IDENTIFIER" && token[:v] == cte_name
           unless (cte_found = (token[:t] != "CTE_SELECT"))
             next to_append.map { _1[:v] }.join
