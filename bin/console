@@ -40,7 +40,7 @@ log [@plain, "
   --help / -h   This menu
 
 ", [@bold, "DATABASE_URL"], "
-", [@magenta, "Sets up a connection when provided."], "
+", [@magenta, "Sets up a connection. Can also be provided via ENV['CONSOLE_DATABASE_URL']."], "
 
   Example values:
     sqlite3::memory: - in-memory SQLite database
@@ -63,14 +63,14 @@ require "app_query"
 log [@magenta, "👋 Welcome to ", [@bold, "AppQuery"], " - Turning 🥦 raw queries into 🍜"]
 
 
-# `env DATABASE_URL= console` skips db-setup
-if url = (ARGV.shift || (!ENV["DATABASE_URL"]&.empty? && ENV["DATABASE_URL"]))
+# `env CONSOLE_DATABASE_URL= console` skips db-setup
+if url = (ARGV.shift || (!ENV["CONSOLE_DATABASE_URL"]&.empty? && ENV["CONSOLE_DATABASE_URL"]))
   log [@yellow, "🔌 Connecting to #{url.inspect}... 🚀"]
   ActiveRecord::Base.logger = Logger.new(STDOUT)
 
   ActiveRecord::Base.establish_connection(url:)
 else
-  log [@blue, "❌ ENV['DATABASE_URL'] not found - skipping database setup."]
+  log [@blue, "❌ database url not provided - skipping database setup."]
 MSG
 end
 

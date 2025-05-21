@@ -1391,3 +1391,18 @@
   published_on: 2024-11-07
   tags: release:major,release:8x
   id: 304
+305:
+  title: Rails Versions 7.0.8.7, 7.1.5.1, 7.2.2.1, and 8.0.0.1 have been released!
+  published_on: 2024-12-10
+  tags: release:revision,release:7x,release:8x
+  id: 305
+306:
+  title: Rails Version 8.0.1 has been released!
+  published_on: 2024-12-13
+  tags: release:patch,release:8x
+  id: 306
+307:
+  title: Rails Version 8.0.2 has been released!
+  published_on: 2025-03-12
+  tags: release:patch,release:8x
+  id: 307

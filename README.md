@@ -13,6 +13,16 @@ Specifically it provides:
     invoke  rspec
     create    spec/queries/reports/weekly_query_spec.rb
   ```
+- **...ERB templating**  
+  Simple ERB templating with helper-functions:
+  ```sql
+  -- app/queries/contracts.sql.erb
+  SELECT * FROM contracts
+  <%= order_by(order) %>
+  ```
+  ```ruby
+  AppQuery["contracts.sql.erb"].render(order: {year: :desc, month: :desc}).select_all
+  ```
 - **...helpers to rewrite a query for introspection during development and testing**  
   See what a CTE yields: `query.select_all(select: "SELECT * FROM some_cte")`.  
   Query the end result: `query.select_one(select: "SELECT COUNT(*) FROM _ WHERE ...")`.  
@@ -88,7 +98,8 @@ casts = {"today" => ActiveRecord::Type::Date.new}
 q = AppQuery(<<~SQL)
   WITH articles(id,title,published_on) AS (
     values(1, 'Some title', '2024-3-31'),
-          (2, 'Other title', '2024-10-31'))
+          (2, 'Other title', '2024-10-31'),
+          (3, 'Same title?', '2024-3-31'))
   select * from articles order by id DESC
 SQL
 
@@ -97,6 +108,24 @@ q.select_all(select: %{select * from articles where id < 2}).to_a
 
 ## query the end-result (available as the CTE named '_')
 q.select_one(select: %{select * from _ limit 1})
+
+## ERB templating
+# Extract a query from q that can be sorted dynamically:
+q2 = q.with_select("select id,title,published_on::date from articles <%= order_by(order) %>")
+q2.render(order: {"published_on::date": :desc, 'lower(title)': "asc"}).select_all(cast: true).entries
+# shows latest articles first, and titles sorted alphabetically
+# for articles published on the same date.
+# order_by raises when it's passed something that would result in just `ORDER BY`:
+q2.render(order: {})
+# doing a select using a query that should be rendered, a AppQuery::UnrenderedQueryError will be raised:
+q2.select_all.entries
+
+# NOTE you can use both `order` and `@order`: local variables like `order` are required,
+# while instance variables like `@order` are optional.
+# To skip the order-part when provided:
+<%= @order.presence && order_by(order) %>
+# or use a default when order-part is always wanted but not always provided:
+<%= order_by(@order || {id: :desc}) %>
 ```
 
 
