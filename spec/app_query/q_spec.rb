@@ -5,6 +5,66 @@ RSpec.describe AppQuery::Q do
     AppQuery(...)
   end
 
+  describe "#render" do
+    def render_sql(sql, render_opts)
+      app_query(sql).render(render_opts).to_s
+    end
+
+    it "allows for local and instance variables" do
+      expect(render_sql(<<~SQL, table: :foo)).to match(/SELECT \* FROM foo$/)
+        SELECT * FROM <%= table %>
+        <% if @limit -%>
+        LIMIT <%= @limit %>
+        <% end -%>
+      SQL
+    end
+
+    it "raises when not all local variables are provided" do
+      expect {
+        render_sql(<<~SQL, colum: :id) # typo
+          SELECT *
+          FROM some_table
+          ORDER BY <%= column %> desc
+        SQL
+      }.to raise_error(NameError, /undefined local variable or method [`']column'/)
+    end
+
+    it "raises AppQuery::UnrenderedQueryError when select-ing using unrendered query" do
+      expect {
+        app_query("select * from <%= table %>").select_all
+      }.to raise_error(AppQuery::UnrenderedQueryError, /Query is ERB/)
+    end
+
+    context "helper: order_by" do
+      it "accepts a hash" do
+        expect(render_sql(<<~SQL, {})).to match(/ORDER BY year DESC, month DESC/)
+          SELECT *
+          FROM table
+          <%= order_by(year: :desc, month: :desc) %>
+        SQL
+      end
+
+      it "requires non-blank hash" do
+        expect {
+          render_sql(<<~SQL, order: {})
+            SELECT *
+            FROM table
+            <%= order_by(order) %>
+          SQL
+        }.to raise_error(ArgumentError, /Provide columns to sort by/)
+      end
+
+      it "can be made optional" do
+        expect(render_sql(<<~SQL, order: {})).to match(/SELECT \* FROM table$/)
+          SELECT * FROM table
+          <%= @order.presence && order_by(order) %>
+        SQL
+      end
+    end
+  end
+
+  # TODO select_all with sql that needs rendering, raises error
+
   describe "#select" do
     it "finds the select-part of the query" do
       expect(app_query("select 1")).to have_attributes(select: "select 1")

@@ -7,6 +7,8 @@ require "active_record"
 module AppQuery
   class Error < StandardError; end
 
+  class UnrenderedQueryError < StandardError; end
+
   Configuration = Struct.new(:query_path)
 
   def self.configuration
@@ -24,10 +26,14 @@ module AppQuery
   end
   reset_configuration!
 
-  def self.[](v)
-    query_name = v.to_s
-    full_path = (Pathname.new(configuration.query_path) / "#{query_name}.sql").expand_path
-    Q.new(full_path.read, name: "AppQuery #{query_name}")
+  # Examples:
+  #   AppQuery[:invoices] # looks for invoices.sql
+  #   AppQuery["reports/weekly"]
+  #   AppQuery["invoices.sql.erb"]
+  def self.[](query_name)
+    filename = File.extname(query_name.to_s).empty? ? "#{query_name}.sql" : query_name.to_s
+    full_path = (Pathname.new(configuration.query_path) / filename).expand_path
+    Q.new(full_path.read, name: "AppQuery #{query_name}", filename: full_path.to_s)
   end
 
   class Result < ActiveRecord::Result
@@ -94,17 +100,63 @@ module AppQuery
   class Q
     attr_reader :name, :sql
 
-    def initialize(sql, name: nil)
+    def initialize(sql, name: nil, filename: nil)
       @sql = sql
       @name = name
+      @filename = filename
     end
 
+    def render(params)
+      self.class.new(to_erb.result(render_helper(params).get_binding))
+    end
+
+    def to_erb
+      ERB.new(sql, trim_mode: "-").tap { _1.location = [@filename, 0] if @filename }
+    end
+    private :to_erb
+
+    def render_helper(params)
+      Module.new do
+        extend self
+
+        params.each do |k, v|
+          define_method(k) { v }
+          instance_variable_set(:"@#{k}", v)
+        end
+
+        # Examples
+        #   <%= order_by({year: :desc, month: :desc}) %>
+        #   #=> ORDER BY year DESC, month DESC
+        #
+        # Using variable:
+        #   <%= order_by(ordering) %>
+        # NOTE Raises when ordering not provided or when blank.
+        #
+        # Make it optional:
+        #   <%= @ordering.presence && order_by(ordering) %>
+        #
+        def order_by(hash)
+          raise ArgumentError, "Provide columns to sort by, e.g. order_by(id: :asc)  (got #{hash.inspect})." unless hash.present?
+          "ORDER BY " + hash.map do |k, v|
+            v.nil? ? k : [k, v.upcase].join(" ")
+          end.join(", ")
+        end
+
+        def get_binding
+          binding
+        end
+      end
+    end
+    private :render_helper
+
     def select_all(binds: [], select: nil, cast: false)
-      with_select(select).then do |aq|
+      with_select(select).render({}).then do |aq|
         ActiveRecord::Base.connection.select_all(aq.to_s, name, binds).then do |result|
           Result.from_ar_result(result, cast)
         end
       end
+    rescue NameError
+      raise UnrenderedQueryError, "Query is ERB. Use #render before select-ing."
     end
 
     def select_one(binds: [], select: nil, cast: false)
