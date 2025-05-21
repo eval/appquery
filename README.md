@@ -111,10 +111,19 @@ q.select_one(select: %{select * from _ limit 1})
 
 ## ERB templating
 # Extract a query from q that can be sorted dynamically:
-q2 = q.with_select("select * from articles <%= order_by(order) %>")
-q2.render(order: {"published_on::date": :desc, 'lower(title)': "asc"})
-# shows latest articles first, with titles sorted alphabetically
+q2 = q.with_select("select id,title,published_on::date from articles <%= order_by(order) %>")
+q2.render(order: {"published_on::date": :desc, 'lower(title)': "asc"}).select_all(cast: true).entries
+# shows latest articles first, and titles sorted alphabetically
 # for articles published on the same date.
+# order_by raises when it's passed something that would result in just `ORDER BY`
+q2.render(order: {})
+
+# NOTE you can use both `order` and `@order`: local variables like `order` are required,
+# while instance variables like `@order` are optional.
+# To skip the order-part when provided:
+<%= @order.presence && order_by(order) %>
+# or use a default when order-part is always wanted but not always provided:
+<%= order_by(@order || {id: :desc}) %>
 ```
 
 
