@@ -167,8 +167,19 @@ module AppQuery
     def select_all(binds: [], select: nil, cast: self.cast)
       binds = binds.presence || @binds
       with_select(select).render({}).then do |aq|
-        ActiveRecord::Base.connection.select_all(aq.to_s, name, binds).then do |result|
-          Result.from_ar_result(result, cast)
+        if binds.is_a?(Hash)
+          sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
+            Arel.sql(aq.to_s, **binds)
+          else
+            ActiveRecord::Base.sanitize_sql_array([aq.to_s, **binds])
+          end
+          ActiveRecord::Base.connection.select_all(sql, name).then do |result|
+            Result.from_ar_result(result, cast)
+          end
+        else
+          ActiveRecord::Base.connection.select_all(aq.to_s, name, binds).then do |result|
+            Result.from_ar_result(result, cast)
+          end
         end
       end
     rescue NameError => e

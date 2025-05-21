@@ -176,7 +176,8 @@ RSpec.describe AppQuery::Q do
       app_query(<<~SQL)
         with articles(id,title,published_on) as (
         values(1, 'Some title', '2024-3-31'),
-              (2, 'Other title', '2024-10-31')
+              (2, 'Other title', '2024-10-31'),
+              (3, 'Moar title?', '2024-10-31')
         )
         select *
         from (values(1, array['ruby','rails']),
@@ -191,8 +192,30 @@ RSpec.describe AppQuery::Q do
     end
 
     describe "#select_all" do
-      describe "keywords" do
-        it "accepts :select" do
+      describe ":binds" do
+        specify "positional binds" do
+          q = query.with_select(<<~SQL)
+            SELECT * FROM articles
+            WHERE title ILIKE $1
+            ORDER BY id desc
+          SQL
+
+          expect(q.select_one(binds: ["%title"])).to include("title" => "Other title")
+        end
+
+        specify "named binds" do
+          q = query.with_select(<<~SQL)
+            SELECT * FROM articles
+            WHERE title ILIKE :title_ilike
+            ORDER BY id desc
+          SQL
+
+          expect(q.select_one(binds: {title_ilike: "%title"})).to include("title" => "Other title")
+        end
+      end
+
+      describe ":select" do
+        it "overrides the select-part" do
           expect(query.select_all(select: "select title from articles")).to \
             include(a_hash_including("title" => "Some title"))
         end
