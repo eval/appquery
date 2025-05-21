@@ -98,13 +98,14 @@ module AppQuery
   end
 
   class Q
-    attr_reader :name, :sql, :binds
+    attr_reader :name, :sql, :binds, :cast
 
-    def initialize(sql, name: nil, filename: nil, binds: [])
+    def initialize(sql, name: nil, filename: nil, binds: [], cast: true)
       @sql = sql
       @name = name
       @filename = filename
       @binds = binds
+      @cast = cast
     end
 
     def deep_dup
@@ -112,7 +113,7 @@ module AppQuery
     end
 
     def reset!
-      (instance_variables - %i[@sql @filename @name @binds]).each do
+      (instance_variables - %i[@sql @filename @name @binds @cast]).each do
         instance_variable_set(_1, nil)
       end
       self
@@ -163,7 +164,7 @@ module AppQuery
     end
     private :render_helper
 
-    def select_all(binds: [], select: nil, cast: false)
+    def select_all(binds: [], select: nil, cast: self.cast)
       binds = binds.presence || @binds
       with_select(select).render({}).then do |aq|
         ActiveRecord::Base.connection.select_all(aq.to_s, name, binds).then do |result|
@@ -176,11 +177,11 @@ module AppQuery
       raise UnrenderedQueryError, "Query is ERB. Use #render before select-ing."
     end
 
-    def select_one(binds: [], select: nil, cast: false)
+    def select_one(binds: [], select: nil, cast: self.cast)
       select_all(binds:, select:, cast:).first || {}
     end
 
-    def select_value(binds: [], select: nil, cast: false)
+    def select_value(binds: [], select: nil, cast: self.cast)
       select_one(binds:, select:, cast:).values.first
     end
 
@@ -199,6 +200,12 @@ module AppQuery
     def with_binds(binds)
       deep_dup.tap do
         _1.instance_variable_set(:@binds, binds)
+      end
+    end
+
+    def with_cast(cast)
+      deep_dup.tap do
+        _1.instance_variable_set(:@cast, cast)
       end
     end
 
