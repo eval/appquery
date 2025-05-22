@@ -23,6 +23,21 @@ Specifically it provides:
   ```ruby
   AppQuery["contracts.sql.erb"].render(order: {year: :desc, month: :desc}).select_all
   ```
+- **...positional and named binds**  
+  Intuitive binds:
+  ```ruby
+  AppQuery(%{select now() - (:interval)::interval as some_date}).select_value(binds: {interval: '1 day'})
+  AppQuery(<<~SQL).select_all(binds: [2.day.ago, Time.now, '5 minutes']).column("series")
+    select generate_series($1::timestamp, $2::timestamp, $3::interval) as series
+  SQL
+  ```
+- **...casting**  
+  Automatic and custom casting:
+  ```ruby
+  AppQuery(%{select array[1,2]}).select_value #=> [1,2]
+  cast = {"data" => ActiveRecord::Type::Json.new}
+  AppQuery(%{select '{"a": 1}' as data}).select_value(cast:)
+  ```
 - **...helpers to rewrite a query for introspection during development and testing**  
   See what a CTE yields: `query.select_all(select: "SELECT * FROM some_cte")`.  
   Query the end result: `query.select_one(select: "SELECT COUNT(*) FROM _ WHERE ...")`.  
@@ -70,8 +85,8 @@ bundle add appquery
 
 ### ...from console
 
-Testdriving can be easily done from the console. Either by cloning this repository (see `Development`-section) or installing the gem in an existing Rails project.  
-The following example assumes PostgreSQL:
+Testdriving can be easily done from the console. Either by cloning this repository (recommended, see `Development`-section) or installing the gem in an existing Rails project.  
+The following examples assume PostgreSQL (SQLite where stated):
 
 ```ruby
 # showing select_(all|one|value)
@@ -82,16 +97,22 @@ The following example assumes PostgreSQL:
 > AppQuery(%{select date('now') as today}).select_value
 => "2025-05-10"
 
+# binds
+# positional binds
+> AppQuery(%{select now() - ($1)::interval as date}).select_value(binds: ['2 days'])
+# named binds
+> AppQuery(%{select now() - (:interval)::interval as date}).select_value(binds: {interval: '2 days'})
+
 # casting
 > AppQuery(%{select date('now') as today}).select_all(cast: true).to_a
 => [{"today" => Sat, 10 May 2025}]
 
 ## SQLite doesn't have a notion of dates or timestamp's so casting won't do anything:
-> AppQuery(%{select date('now') as today}).select_one(cast: true)
+sqlite> AppQuery(%{select date('now') as today}).select_one(cast: true)
 => {"today" => "2025-05-12"}
 ## Providing per-column-casts fixes this:
 casts = {"today" => ActiveRecord::Type::Date.new}
-> AppQuery(%{select date('now') as today}).select_one(cast: casts)
+sqlite> AppQuery(%{select date('now') as today}).select_one(cast: casts)
 => {"today" => Mon, 12 May 2025}
 
 # rewriting queries (using CTEs)
@@ -112,12 +133,12 @@ q.select_one(select: %{select * from _ limit 1})
 ## ERB templating
 # Extract a query from q that can be sorted dynamically:
 q2 = q.with_select("select id,title,published_on::date from articles <%= order_by(order) %>")
-q2.render(order: {"published_on::date": :desc, 'lower(title)': "asc"}).select_all(cast: true).entries
+q2.render(order: {"published_on::date": :desc, 'lower(title)': "asc"}).select_all.entries
 # shows latest articles first, and titles sorted alphabetically
 # for articles published on the same date.
 # order_by raises when it's passed something that would result in just `ORDER BY`:
 q2.render(order: {})
-# doing a select using a query that should be rendered, a AppQuery::UnrenderedQueryError will be raised:
+# doing a select using a query that should be rendered, a `AppQuery::UnrenderedQueryError` will be raised:
 q2.select_all.entries
 
 # NOTE you can use both `order` and `@order`: local variables like `order` are required,
@@ -552,6 +573,7 @@ Using [mise](https://mise.jdx.dev/) for env-vars recommended.
 The [console-script](./bin/console) is setup such that it's easy to connect with a database and experiment with the library:
 ```bash
 $ ./bin/console sqlite3::memory:
+$ ./bin/console postgres://localhost:5432/some_db
 
 # more details
 $ ./bin/console -h
