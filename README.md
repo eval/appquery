@@ -86,6 +86,15 @@ bundle add appquery
 ### ...from console
 
 Testdriving can be easily done from the console. Either by cloning this repository (recommended, see `Development`-section) or installing the gem in an existing Rails project.  
+<details>
+  <summary>Database setup (the `bin/console`-script does this for your)</summary>
+  
+  ```ruby
+  ActiveRecord::Base.logger = Logger.new(STDOUT)
+  ActiveRecord::Base.establish_connection(url: 'postgres://localhost:5432/some_db')
+  ```
+</details>
+
 The following examples assume PostgreSQL (SQLite where stated):
 
 ```ruby
