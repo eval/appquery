@@ -30,10 +30,10 @@ module AppQuery
   #   AppQuery[:invoices] # looks for invoices.sql
   #   AppQuery["reports/weekly"]
   #   AppQuery["invoices.sql.erb"]
-  def self.[](query_name)
+  def self.[](query_name, **opts)
     filename = File.extname(query_name.to_s).empty? ? "#{query_name}.sql" : query_name.to_s
     full_path = (Pathname.new(configuration.query_path) / filename).expand_path
-    Q.new(full_path.read, name: "AppQuery #{query_name}", filename: full_path.to_s)
+    Q.new(full_path.read, name: "AppQuery #{query_name}", filename: full_path.to_s, **opts)
   end
 
   class Result < ActiveRecord::Result
