@@ -568,7 +568,7 @@ query.replace_cte("recent_articles as (select values(1, 'Some article'))")
 
 - 💾 tested with **SQLite** and **PostgreSQL**
 - 🚆 tested with Rails **v6.1**, **v7** and **v8.0**
-- 💎 requires Ruby **>v3.2**  
+- 💎 requires Ruby **>=v3.2**  
   Goal is to support [maintained Ruby versions](https://www.ruby-lang.org/en/downloads/branches/).
 
 ## Development
