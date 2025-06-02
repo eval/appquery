@@ -4,8 +4,8 @@ module AppQuery
     class_attribute :_default_binds, default: {}, instance_predicate: false
 
     class << self
-      def run(build_only: false, binds: {}, render: {}, cast: self.cast, select: nil, **)
-        _build(binds:, render:, cast:, select:).then do
+      def run(build_only: false, binds: {}, vars: {}, cast: self.cast, select: nil, **)
+        _build(binds:, vars:, cast:, select:).then do
           build_only ? _1 : _1.select_all
         end
       end
@@ -33,8 +33,8 @@ module AppQuery
 
       private
 
-      def _build(cast:, binds: {}, select: nil, render: {})
-        AppQuery[query_name, binds:, cast:].render(render).with_select(select)
+      def _build(cast:, binds: {}, select: nil, vars: {})
+        AppQuery[query_name, binds:, cast:].render(vars).with_select(select)
       end
 
       def derive_query_name

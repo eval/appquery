@@ -120,9 +120,9 @@ module AppQuery
     end
     private :reset!
 
-    def render(params)
-      params ||= []
-      with_sql(to_erb.result(render_helper(params).get_binding))
+    def render(vars)
+      vars ||= {}
+      with_sql(to_erb.result(render_helper(vars).get_binding))
     end
 
     def to_erb
@@ -130,11 +130,11 @@ module AppQuery
     end
     private :to_erb
 
-    def render_helper(params)
+    def render_helper(vars)
       Module.new do
         extend self
 
-        params.each do |k, v|
+        vars.each do |k, v|
           define_method(k) { v }
           instance_variable_set(:"@#{k}", v)
         end
