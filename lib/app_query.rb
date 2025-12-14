@@ -231,6 +231,42 @@ module AppQuery
       select_one(binds:, select:, cast:)&.values&.first
     end
 
+    # Examples
+    #   AppQuery(<<~SQL).insert(binds: ["Let's learn SQL!"])
+    #     INSERT INTO videos(title, created_at, updated_at) values($1, now(), now())
+    #   SQL
+    def insert(binds: [], returning: nil)
+      # ActiveRecord::Base.connection.insert(sql, name, _pk = nil, _id_value = nil, _sequence_name = nil, binds, returning: nil)
+      if returning && ActiveRecord::VERSION::STRING.to_f < 7.1
+        raise ArgumentError, "The 'returning' option requires Rails 7.1+. Current version: #{ActiveRecord::VERSION::STRING}"
+      end
+
+      binds = binds.presence || @binds
+      render({}).then do |aq|
+        if binds.is_a?(Hash)
+          sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
+            Arel.sql(aq.to_s, **binds)
+          else
+            ActiveRecord::Base.sanitize_sql_array([aq.to_s, **binds])
+          end
+          if ActiveRecord::VERSION::STRING.to_f >= 7.1
+            ActiveRecord::Base.connection.insert(sql, name, returning:)
+          else
+            ActiveRecord::Base.connection.insert(sql, name)
+          end
+        elsif ActiveRecord::VERSION::STRING.to_f >= 7.1
+          # pk is the less flexible returning
+          ActiveRecord::Base.connection.insert(aq.to_s, name, _pk = nil, _id_value = nil, _sequence_name = nil, binds, returning:)
+        else
+          ActiveRecord::Base.connection.insert(aq.to_s, name, _pk = nil, _id_value = nil, _sequence_name = nil, binds)
+        end
+      end
+    rescue NameError => e
+      # Prevent any subclasses, e.g. NoMethodError
+      raise e unless e.instance_of?(NameError)
+      raise UnrenderedQueryError, "Query is ERB. Use #render before select-ing."
+    end
+
     def tokens
       @tokens ||= tokenizer.run
     end

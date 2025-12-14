@@ -191,6 +191,50 @@ RSpec.describe AppQuery::Q do
       end
     end
 
+    describe "#insert" do
+      before do
+        ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS videos")
+        ActiveRecord::Base.connection.execute(<<~SQL)
+          CREATE TABLE videos (
+            id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL,
+            updated_at TIMESTAMP NOT NULL
+          )
+        SQL
+      end
+
+      after do
+        ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS videos")
+      end
+
+      it "inserts a single row" do
+        q = app_query(<<~SQL)
+          INSERT INTO videos (title, created_at, updated_at)
+          VALUES ('Test Video', now(), now())
+        SQL
+
+        expect { q.insert }.to change {
+          app_query("SELECT COUNT(*) FROM videos").select_value
+        }.by(1)
+      end
+
+      it "inserts multiple rows using values helper" do
+        videos = [["Let's Learn SQL"], ["O'Reilly's Tutorial"]]
+        q = app_query(<<~SQL).render(videos: videos)
+          INSERT INTO videos (title, created_at, updated_at)
+          <%= values(videos) { |(title)| [quote(title), 'now()', 'now()'] } %>
+        SQL
+
+        expect { q.insert }.to change {
+          app_query("SELECT COUNT(*) FROM videos").select_value
+        }.by(2)
+
+        titles = app_query("SELECT title FROM videos ORDER BY id").select_all.column("title")
+        expect(titles).to eq(["Let's Learn SQL", "O'Reilly's Tutorial"])
+      end
+    end
+
     describe "#select_all" do
       describe ":binds" do
         specify "positional binds" do
