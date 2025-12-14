@@ -223,6 +223,7 @@ module AppQuery
     end
     private :render_helper
 
+    # TODO: have aliases for common casts: select_all(cast: {"today" => :date})
     def select_all(binds: nil, select: nil, cast: self.cast)
       with_select(select).render({}).then do |aq|
         # Support both positional (array) and named (hash) binds
