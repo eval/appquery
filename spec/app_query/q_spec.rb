@@ -49,25 +49,48 @@ RSpec.describe AppQuery::Q do
     context "helper: values" do
       before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
 
-      it "accepts an array" do
-        expect(render_sql(<<~SQL, {})).to match(/VALUES \(1, 'Some video'\),.\(2, 'Another video'\)/m)
+      it "generates named placeholders for an array" do
+        q = app_query(<<~SQL).render({})
           INSERT INTO videos (id, title)
           <%= values([[1, "Some video"], [2, "Another video"]]) %>
         SQL
+
+        expect(q.to_s).to match(/VALUES \(:b1, :b2\),.\(:b3, :b4\)/m)
+        expect(q.binds).to eq({b1: 1, b2: "Some video", b3: 2, b4: "Another video"})
       end
 
-      it "accepts a hash" do
-        expect(render_sql(<<~SQL, {})).to match(/VALUES \(1, 'Some video'\),.\(2, 'Another video'\)/m)
+      it "generates named placeholders for a hash" do
+        q = app_query(<<~SQL).render({})
           INSERT INTO videos (id, title)
           <%= values([{id: 1, title: "Some video"}, {id: 2, title: "Another video"}]) %>
         SQL
+
+        expect(q.to_s).to match(/VALUES \(:b1, :b2\),.\(:b3, :b4\)/m)
+        expect(q.binds).to eq({b1: 1, b2: "Some video", b3: 2, b4: "Another video"})
       end
 
-      xit "accepts a hash" do
-        expect(render_sql(<<~SQL, {})).to match(/videos \(id,title\).VALUES \(1, 'Some video'\),.\(2, 'Another video'\)/m)
-          INSERT INTO videos
-          <%= values([{id: 1, title: "Some video"}, {id: 2, title: "Another video"}]) %>
+      it "can be merged with explicit named binds" do
+        q = app_query(<<~SQL, binds: {id: 42}).render({})
+          SELECT * FROM t WHERE id = :id
+          UNION ALL
+          <%= values([[1, "title"]]) %>
         SQL
+
+        expect(q.to_s).to match(/VALUES \(:b1, :b2\)/)
+        expect(q.binds).to eq({id: 42, b1: 1, b2: "title"})
+      end
+    end
+
+    context "helper: bind" do
+      before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
+
+      it "generates a named placeholder and collects the bind" do
+        q = app_query(<<~SQL).render({})
+          SELECT * FROM videos WHERE title = <%= bind("Some title") %>
+        SQL
+
+        expect(q.to_s).to match(/WHERE title = :b1/)
+        expect(q.binds).to eq({b1: "Some title"})
       end
     end
 
@@ -283,6 +306,18 @@ RSpec.describe AppQuery::Q do
           expect(q.select_one(binds: ["%title"])).to include("title" => "Other title")
         end
 
+        specify "raises when mixing positional binds with collected named binds" do
+          q = app_query(<<~SQL).render(titles: ["More", "And even more"])
+            SELECT title FROM articles WHERE id = $1
+            UNION ALL
+            <%= values(titles.zip) %>
+          SQL
+
+          expect {
+            q.select_all(binds: [1])
+          }.to raise_error(ArgumentError, /Cannot use positional binds.*Use named binds/)
+        end
+
         specify "named binds" do
           q = query.with_select(<<~SQL)
             SELECT * FROM articles
@@ -291,6 +326,20 @@ RSpec.describe AppQuery::Q do
           SQL
 
           expect(q.select_one(binds: {title_ilike: "%title"})).to include("title" => "Other title")
+        end
+
+        specify "named binds combined with values helper" do
+          q = app_query(<<~SQL).render(titles: ["More", "And even more"])
+            WITH articles(id, title) AS (
+              VALUES (1, 'Original')
+            )
+            SELECT title FROM articles WHERE id = :id
+            UNION ALL
+            <%= values(titles.map { [_1] }) %>
+          SQL
+
+          result = q.select_all(binds: {id: 1})
+          expect(result.column("title")).to eq(["Original", "More", "And even more"])
         end
       end
 
