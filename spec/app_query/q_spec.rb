@@ -35,6 +35,42 @@ RSpec.describe AppQuery::Q do
       }.to raise_error(AppQuery::UnrenderedQueryError, /Query is ERB/)
     end
 
+    context "helper: quote" do
+      before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
+
+      it "quotes" do
+        expect(render_sql(<<~SQL, {})).to match(/VALUES\('Let''s learn SQL!'/)
+          INSERT INTO videos (title)
+          VALUES(<%= quote("Let's learn SQL!") %>)
+        SQL
+      end
+    end
+
+    context "helper: values" do
+      before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
+
+      it "accepts an array" do
+        expect(render_sql(<<~SQL, {})).to match(/VALUES \(1, 'Some video'\),.\(2, 'Another video'\)/m)
+          INSERT INTO videos (id, title)
+          <%= values([[1, "Some video"], [2, "Another video"]]) %>
+        SQL
+      end
+
+      it "accepts a hash" do
+        expect(render_sql(<<~SQL, {})).to match(/VALUES \(1, 'Some video'\),.\(2, 'Another video'\)/m)
+          INSERT INTO videos (id, title)
+          <%= values([{id: 1, title: "Some video"}, {id: 2, title: "Another video"}]) %>
+        SQL
+      end
+
+      xit "accepts a hash" do
+        expect(render_sql(<<~SQL, {})).to match(/videos \(id,title\).VALUES \(1, 'Some video'\),.\(2, 'Another video'\)/m)
+          INSERT INTO videos
+          <%= values([{id: 1, title: "Some video"}, {id: 2, title: "Another video"}]) %>
+        SQL
+      end
+    end
+
     context "helper: order_by" do
       it "accepts a hash" do
         expect(render_sql(<<~SQL, {})).to match(/ORDER BY year DESC, month DESC/)
