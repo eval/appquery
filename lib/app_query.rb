@@ -177,25 +177,48 @@ module AppQuery
         #   #=> VALUES (:b1, :b2), (:b3, :b4) with binds {b1: 1, b2: "Some video", ...}
         #
         #   <%= values([{id: 1, title: "Some video"}]) %>
-        #   #=> VALUES (:b1, :b2) with binds {b1: 1, b2: "Some video"}
+        #   #=> (id, title) VALUES (:b1, :b2) with binds {b1: 1, b2: "Some video"}
+        #
+        #   <%= values([{title: "A"}, {title: "B", published_on: "2024-01-01"}]) %>
+        #   #=> (title, published_on) VALUES (:b1, NULL), (:b2, :b3)
+        #
+        # Skip column names (e.g. for UNION ALL or CTEs):
+        #   with articles as(
+        #     <%= values([[1, "title"]], skip_columns: true) %>
+        #   )
+        #   #=> with articles as (VALUES (:b1, :b2))
         #
         # With block (mix bind() and quote()):
         #   <%= values(videos) { |v| [bind(v[:id]), quote(v[:title]), 'now()'] } %>
         #   #=> VALUES (:b1, 'Some title', now()), (:b2, 'Other title', now())
-        def values(coll, &block)
-          rows = coll.map do |item|
-            vals = if block
-              block.call(item)
-            elsif item.is_a?(Hash)
-              item.values.map { |v| collect_bind(v) }
-            elsif item.is_a?(Array)
-              item.map { |v| collect_bind(v) }
-            else
-              [collect_bind(item)]
+        def values(coll, skip_columns: false, &block)
+          first = coll.first
+
+          # For hash collections, collect all unique keys
+          if first.is_a?(Hash) && !block
+            all_keys = coll.flat_map(&:keys).uniq
+
+            rows = coll.map do |row|
+              vals = all_keys.map { |k| row.key?(k) ? collect_bind(row[k]) : "NULL" }
+              "(#{vals.join(", ")})"
             end
-            "(#{vals.join(", ")})"
+
+            columns = skip_columns ? "" : "(#{all_keys.join(", ")}) "
+            "#{columns}VALUES #{rows.join(",\n")}"
+          else
+            # Arrays or block - current behavior
+            rows = coll.map do |item|
+              vals = if block
+                block.call(item)
+              elsif item.is_a?(Array)
+                item.map { |v| collect_bind(v) }
+              else
+                [collect_bind(item)]
+              end
+              "(#{vals.join(", ")})"
+            end
+            "VALUES #{rows.join(",\n")}"
           end
-          "VALUES #{rows.join(",\n")}"
         end
 
         # Examples

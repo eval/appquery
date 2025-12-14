@@ -59,14 +59,31 @@ RSpec.describe AppQuery::Q do
         expect(q.binds).to eq({b1: 1, b2: "Some video", b3: 2, b4: "Another video"})
       end
 
-      it "generates named placeholders for a hash" do
+      it "generates column names and placeholders for a hash" do
         q = app_query(<<~SQL).render({})
-          INSERT INTO videos (id, title)
-          <%= values([{id: 1, title: "Some video"}, {id: 2, title: "Another video"}]) %>
+          INSERT INTO videos <%= values([{id: 1, title: "Some video"}, {id: 2, title: "Another video"}]) %>
         SQL
 
-        expect(q.to_s).to match(/VALUES \(:b1, :b2\),.\(:b3, :b4\)/m)
+        expect(q.to_s).to match(/\(id, title\) VALUES \(:b1, :b2\),.\(:b3, :b4\)/m)
         expect(q.binds).to eq({b1: 1, b2: "Some video", b3: 2, b4: "Another video"})
+      end
+
+      it "handles mixed keys with NULL for missing values" do
+        q = app_query(<<~SQL).render({})
+          INSERT INTO articles <%= values([{title: "A"}, {title: "B", published_on: "2024-01-01"}]) %>
+        SQL
+
+        expect(q.to_s).to match(/\(title, published_on\) VALUES \(:b1, NULL\),.\(:b2, :b3\)/m)
+        expect(q.binds).to eq({b1: "A", b2: "B", b3: "2024-01-01"})
+      end
+
+      it "skips columns with skip_columns: true" do
+        q = app_query(<<~SQL).render({})
+          SELECT * FROM articles UNION ALL <%= values([{id: 1, title: "A"}], skip_columns: true) %>
+        SQL
+
+        expect(q.to_s).to match(/UNION ALL VALUES \(:b1, :b2\)/)
+        expect(q.to_s).not_to match(/\(id, title\)/)
       end
 
       it "can be merged with explicit named binds" do
