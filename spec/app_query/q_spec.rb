@@ -294,6 +294,78 @@ RSpec.describe AppQuery::Q do
       end
     end
 
+    describe "#update" do
+      before do
+        ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS videos")
+        ActiveRecord::Base.connection.execute(<<~SQL)
+          CREATE TABLE videos (
+            id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL,
+            updated_at TIMESTAMP NOT NULL
+          )
+        SQL
+      end
+
+      after do
+        ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS videos")
+      end
+
+      it "updates rows and returns affected count" do
+        app_query("INSERT INTO videos (title, created_at, updated_at) VALUES ('Original', now(), now())").insert
+
+        q = app_query("UPDATE videos SET title = 'Updated' WHERE title = 'Original'")
+        expect(q.update).to eq(1)
+
+        expect(app_query("SELECT title FROM videos").select_value).to eq("Updated")
+      end
+
+      it "supports named binds" do
+        app_query("INSERT INTO videos (title, created_at, updated_at) VALUES ('Original', now(), now())").insert
+
+        q = app_query("UPDATE videos SET title = :new_title WHERE title = :old_title")
+        expect(q.update(binds: {new_title: "Updated", old_title: "Original"})).to eq(1)
+
+        expect(app_query("SELECT title FROM videos").select_value).to eq("Updated")
+      end
+    end
+
+    describe "#delete" do
+      before do
+        ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS videos")
+        ActiveRecord::Base.connection.execute(<<~SQL)
+          CREATE TABLE videos (
+            id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL,
+            updated_at TIMESTAMP NOT NULL
+          )
+        SQL
+      end
+
+      after do
+        ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS videos")
+      end
+
+      it "deletes rows and returns affected count" do
+        app_query("INSERT INTO videos (title, created_at, updated_at) VALUES ('ToDelete', now(), now())").insert
+
+        q = app_query("DELETE FROM videos WHERE title = 'ToDelete'")
+        expect(q.delete).to eq(1)
+
+        expect(app_query("SELECT COUNT(*) FROM videos").select_value).to eq(0)
+      end
+
+      it "supports named binds" do
+        app_query("INSERT INTO videos (title, created_at, updated_at) VALUES ('ToDelete', now(), now())").insert
+
+        q = app_query("DELETE FROM videos WHERE title = :title")
+        expect(q.delete(binds: {title: "ToDelete"})).to eq(1)
+
+        expect(app_query("SELECT COUNT(*) FROM videos").select_value).to eq(0)
+      end
+    end
+
     describe "#select_all" do
       describe ":binds" do
         specify "positional binds" do

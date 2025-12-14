@@ -272,6 +272,13 @@ module AppQuery
     #   AppQuery(<<~SQL).insert(binds: ["Let's learn SQL!"])
     #     INSERT INTO videos(title, created_at, updated_at) values($1, now(), now())
     #   SQL
+    #
+    #   articles = [
+    #     {title: "First article"}
+    #   ].map { it.merge(created_at: Time.current)}
+    #   AppQuery(<<~SQL).render(articles:)
+    #     INSERT INTO articles(title, created_at) <%= values(articles) %>
+    #   SQL
     def insert(binds: [], returning: nil)
       # ActiveRecord::Base.connection.insert(sql, name, _pk = nil, _id_value = nil, _sequence_name = nil, binds, returning: nil)
       if returning && ActiveRecord::VERSION::STRING.to_f < 7.1
@@ -302,6 +309,48 @@ module AppQuery
       # Prevent any subclasses, e.g. NoMethodError
       raise e unless e.instance_of?(NameError)
       raise UnrenderedQueryError, "Query is ERB. Use #render before select-ing."
+    end
+
+    # Examples:
+    #   AppQuery("UPDATE videos SET title = 'New' WHERE id = :id").update(binds: {id: 1})
+    def update(binds: [])
+      binds = binds.presence || @binds
+      render({}).then do |aq|
+        if binds.is_a?(Hash)
+          sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
+            Arel.sql(aq.to_s, **binds)
+          else
+            ActiveRecord::Base.sanitize_sql_array([aq.to_s, **binds])
+          end
+          ActiveRecord::Base.connection.update(sql, name)
+        else
+          ActiveRecord::Base.connection.update(aq.to_s, name, binds)
+        end
+      end
+    rescue NameError => e
+      raise e unless e.instance_of?(NameError)
+      raise UnrenderedQueryError, "Query is ERB. Use #render before updating."
+    end
+
+    # Examples:
+    #   AppQuery("DELETE FROM videos WHERE id = :id").delete(binds: {id: 1})
+    def delete(binds: [])
+      binds = binds.presence || @binds
+      render({}).then do |aq|
+        if binds.is_a?(Hash)
+          sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
+            Arel.sql(aq.to_s, **binds)
+          else
+            ActiveRecord::Base.sanitize_sql_array([aq.to_s, **binds])
+          end
+          ActiveRecord::Base.connection.delete(sql, name)
+        else
+          ActiveRecord::Base.connection.delete(aq.to_s, name, binds)
+        end
+      end
+    rescue NameError => e
+      raise e unless e.instance_of?(NameError)
+      raise UnrenderedQueryError, "Query is ERB. Use #render before deleting."
     end
 
     def tokens
