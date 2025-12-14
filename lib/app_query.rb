@@ -140,6 +140,41 @@ module AppQuery
         end
 
         # Examples
+        #   quote("Let's learn Ruby") #=> 'Let''s learn Ruby'
+        def quote(...)
+          ActiveRecord::Base.connection.quote(...)
+        end
+
+        # Examples
+        #   <%= values([{title: "Let's learn Ruby"}, {title: "Some other title"}]) { |v| [quote(v[:title]), 'now()', 'now()'] } %>
+        #   #=> VALUES ('Let''s learn Ruby', now(), now()), ('Some other title', now(), now())
+        #
+        #   INSERT INTO VIDEOS (title, created_at, updated_at)
+        #   <%= values(videos) { |v| [quote(v[:title]), 'now()', 'now()'] } %>
+        #
+        # Without block (auto-quotes):
+        #   <%= values([["Let's learn Ruby"], ["other title"]]) %>
+        #   #=> VALUES ('Let''s learn Ruby'), ('other title')
+        #
+        #   <%= values([{title: "Let's learn Ruby"}, {title: "other title"}]) %>
+        #   #=> VALUES ('Let''s learn Ruby'), ('other title')
+        def values(coll, &block)
+          rows = coll.map do |item|
+            vals = if block
+              block.call(item)
+            elsif item.is_a?(Hash)
+              item.values.map { |v| quote(v) }
+            elsif item.is_a?(Array)
+              item.map { |v| quote(v) }
+            else
+              [quote(item)]
+            end
+            "(#{vals.join(", ")})"
+          end
+          "VALUES #{rows.join(",\n")}"
+        end
+
+        # Examples
         #   <%= order_by({year: :desc, month: :desc}) %>
         #   #=> ORDER BY year DESC, month DESC
         #
