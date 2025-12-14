@@ -90,21 +90,11 @@ log [@yellow, "🛠️ Use `reload!` after making code changes"]
 # not meant as a helper
 undef :ansi_wrap, :ansi_escape
 
-# Custom IRB prompt showing database adapter
-db_indicator = begin
-  adapter = ActiveRecord::Base.connection.adapter_name.downcase
-  "\e[33m[#{adapter}]\e[0m "
-rescue ActiveRecord::ConnectionNotEstablished
-  "\e[34m[no-db]\e[0m "
-end
+# Ensure correct Dir.pwd (and not set by appraisal)
+ENV["IRBRC"] ||= File.expand_path("../.irbrc", __dir__)
 
 require "irb"
-IRB.setup(nil)
-IRB.conf[:PROMPT][:APPQUERY] = {
-  PROMPT_I: "#{db_indicator}appquery> ",
-  PROMPT_S: "#{db_indicator}appquery%l ",
-  PROMPT_C: "#{db_indicator}appquery* ",
-  RETURN: "=> %s\n"
-}
-IRB.conf[:PROMPT_MODE] = :APPQUERY
-IRB::Irb.new.run(IRB.conf)
+unless IRB.initialized?
+  puts "Available helper methods: [reload!]"
+  IRB.start(__FILE__)
+end

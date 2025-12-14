@@ -581,11 +581,14 @@ Using [mise](https://mise.jdx.dev/) for env-vars recommended.
 
 The [console-script](./bin/console) is setup such that it's easy to connect with a database and experiment with the library:
 ```bash
-$ ./bin/console sqlite3::memory:
-$ ./bin/console postgres://localhost:5432/some_db
+$ bin/console sqlite3::memory:
+$ bin/console postgres://localhost:5432/some_db
 
 # more details
-$ ./bin/console -h
+$ bin/console -h
+
+# when needing an appraisal, use bin/run (this ensures signals are handled correctly):
+$ bin/run rails-head console
 ```
 
 ### various
