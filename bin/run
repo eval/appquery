@@ -1,0 +1,28 @@
+#!/bin/bash
+# Wrapper around appraisal that uses exec for proper signal handling
+# Usage: bin/run rails-head console
+#        bin/run rails-80 rspec spec/
+
+set -e
+
+if [ -z "$1" ]; then
+  echo "Usage: bin/run <appraisal-name> <command> [args...]"
+  echo "Example: bin/run rails_head console"
+  echo "         bin/run rails_80 rspec spec/"
+  exit 1
+fi
+
+APPRAISAL_NAME="$1"
+shift
+
+GEMFILE="gemfiles/${APPRAISAL_NAME}.gemfile"
+
+if [ ! -f "$GEMFILE" ]; then
+  echo "Error: Gemfile not found: $GEMFILE"
+  echo "Available appraisals:"
+  ls -1 gemfiles/*.gemfile 2>/dev/null | sed 's|gemfiles/||;s|\.gemfile||' | sed 's/^/  /'
+  exit 1
+fi
+
+export BUNDLE_GEMFILE="$GEMFILE"
+exec bundle exec "$@"

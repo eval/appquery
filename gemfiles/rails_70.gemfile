@@ -11,6 +11,7 @@ gem "benchmark"
 gem "irb"
 gem "activerecord"
 gem "pg"
-gem "rails", "~> 7.0"
+gem "sqlite3", "~> 1.4"
+gem "rails", "~> 7.0.0"
 
 gemspec path: "../"

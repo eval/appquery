@@ -35,6 +35,82 @@ RSpec.describe AppQuery::Q do
       }.to raise_error(AppQuery::UnrenderedQueryError, /Query is ERB/)
     end
 
+    context "helper: quote" do
+      before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
+
+      it "quotes" do
+        expect(render_sql(<<~SQL, {})).to match(/VALUES\('Let''s learn SQL!'/)
+          INSERT INTO videos (title)
+          VALUES(<%= quote("Let's learn SQL!") %>)
+        SQL
+      end
+    end
+
+    context "helper: values" do
+      before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
+
+      it "generates named placeholders for an array" do
+        q = app_query(<<~SQL).render({})
+          INSERT INTO videos (id, title)
+          <%= values([[1, "Some video"], [2, "Another video"]]) %>
+        SQL
+
+        expect(q.to_s).to match(/VALUES \(:b1, :b2\),.\(:b3, :b4\)/m)
+        expect(q.binds).to eq({b1: 1, b2: "Some video", b3: 2, b4: "Another video"})
+      end
+
+      it "generates column names and placeholders for a hash" do
+        q = app_query(<<~SQL).render({})
+          INSERT INTO videos <%= values([{id: 1, title: "Some video"}, {id: 2, title: "Another video"}]) %>
+        SQL
+
+        expect(q.to_s).to match(/\(id, title\) VALUES \(:b1, :b2\),.\(:b3, :b4\)/m)
+        expect(q.binds).to eq({b1: 1, b2: "Some video", b3: 2, b4: "Another video"})
+      end
+
+      it "handles mixed keys with NULL for missing values" do
+        q = app_query(<<~SQL).render({})
+          INSERT INTO articles <%= values([{title: "A"}, {title: "B", published_on: "2024-01-01"}]) %>
+        SQL
+
+        expect(q.to_s).to match(/\(title, published_on\) VALUES \(:b1, NULL\),.\(:b2, :b3\)/m)
+        expect(q.binds).to eq({b1: "A", b2: "B", b3: "2024-01-01"})
+      end
+
+      it "skips columns with skip_columns: true" do
+        q = app_query(<<~SQL).render({})
+          SELECT * FROM articles UNION ALL <%= values([{id: 1, title: "A"}], skip_columns: true) %>
+        SQL
+
+        expect(q.to_s).to match(/UNION ALL VALUES \(:b1, :b2\)/)
+        expect(q.to_s).not_to match(/\(id, title\)/)
+      end
+
+      it "can be merged with explicit named binds" do
+        q = app_query(<<~SQL, binds: {id: 42}).render({})
+          SELECT * FROM t WHERE id = :id
+          UNION ALL
+          <%= values([[1, "title"]]) %>
+        SQL
+
+        expect(q.to_s).to match(/VALUES \(:b1, :b2\)/)
+        expect(q.binds).to eq({id: 42, b1: 1, b2: "title"})
+      end
+    end
+
+    context "helper: bind" do
+      before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
+
+      it "generates a named placeholder and collects the bind" do
+        q = app_query(<<~SQL).render({})
+          SELECT * FROM videos WHERE title = <%= bind("Some title") %>
+        SQL
+
+        expect(q.to_s).to match(/WHERE title = :b1/)
+        expect(q.binds).to eq({b1: "Some title"})
+      end
+    end
+
     context "helper: order_by" do
       it "accepts a hash" do
         expect(render_sql(<<~SQL, {})).to match(/ORDER BY year DESC, month DESC/)
@@ -191,6 +267,122 @@ RSpec.describe AppQuery::Q do
       end
     end
 
+    describe "#insert" do
+      before do
+        ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS videos")
+        ActiveRecord::Base.connection.execute(<<~SQL)
+          CREATE TABLE videos (
+            id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL,
+            updated_at TIMESTAMP NOT NULL
+          )
+        SQL
+      end
+
+      after do
+        ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS videos")
+      end
+
+      it "inserts a single row" do
+        q = app_query(<<~SQL)
+          INSERT INTO videos (title, created_at, updated_at)
+          VALUES ('Test Video', now(), now())
+        SQL
+
+        expect { q.insert }.to change {
+          app_query("SELECT COUNT(*) FROM videos").select_value
+        }.by(1)
+      end
+
+      it "inserts multiple rows using values helper" do
+        videos = [["Let's Learn SQL"], ["O'Reilly's Tutorial"]]
+        q = app_query(<<~SQL).render(videos: videos)
+          INSERT INTO videos (title, created_at, updated_at)
+          <%= values(videos) { |(title)| [quote(title), 'now()', 'now()'] } %>
+        SQL
+
+        expect { q.insert }.to change {
+          app_query("SELECT COUNT(*) FROM videos").select_value
+        }.by(2)
+
+        titles = app_query("SELECT title FROM videos ORDER BY id").select_all.column("title")
+        expect(titles).to eq(["Let's Learn SQL", "O'Reilly's Tutorial"])
+      end
+    end
+
+    describe "#update" do
+      before do
+        ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS videos")
+        ActiveRecord::Base.connection.execute(<<~SQL)
+          CREATE TABLE videos (
+            id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL,
+            updated_at TIMESTAMP NOT NULL
+          )
+        SQL
+      end
+
+      after do
+        ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS videos")
+      end
+
+      it "updates rows and returns affected count" do
+        app_query("INSERT INTO videos (title, created_at, updated_at) VALUES ('Original', now(), now())").insert
+
+        q = app_query("UPDATE videos SET title = 'Updated' WHERE title = 'Original'")
+        expect(q.update).to eq(1)
+
+        expect(app_query("SELECT title FROM videos").select_value).to eq("Updated")
+      end
+
+      it "supports named binds" do
+        app_query("INSERT INTO videos (title, created_at, updated_at) VALUES ('Original', now(), now())").insert
+
+        q = app_query("UPDATE videos SET title = :new_title WHERE title = :old_title")
+        expect(q.update(binds: {new_title: "Updated", old_title: "Original"})).to eq(1)
+
+        expect(app_query("SELECT title FROM videos").select_value).to eq("Updated")
+      end
+    end
+
+    describe "#delete" do
+      before do
+        ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS videos")
+        ActiveRecord::Base.connection.execute(<<~SQL)
+          CREATE TABLE videos (
+            id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL,
+            updated_at TIMESTAMP NOT NULL
+          )
+        SQL
+      end
+
+      after do
+        ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS videos")
+      end
+
+      it "deletes rows and returns affected count" do
+        app_query("INSERT INTO videos (title, created_at, updated_at) VALUES ('ToDelete', now(), now())").insert
+
+        q = app_query("DELETE FROM videos WHERE title = 'ToDelete'")
+        expect(q.delete).to eq(1)
+
+        expect(app_query("SELECT COUNT(*) FROM videos").select_value).to eq(0)
+      end
+
+      it "supports named binds" do
+        app_query("INSERT INTO videos (title, created_at, updated_at) VALUES ('ToDelete', now(), now())").insert
+
+        q = app_query("DELETE FROM videos WHERE title = :title")
+        expect(q.delete(binds: {title: "ToDelete"})).to eq(1)
+
+        expect(app_query("SELECT COUNT(*) FROM videos").select_value).to eq(0)
+      end
+    end
+
     describe "#select_all" do
       describe ":binds" do
         specify "positional binds" do
@@ -203,6 +395,18 @@ RSpec.describe AppQuery::Q do
           expect(q.select_one(binds: ["%title"])).to include("title" => "Other title")
         end
 
+        specify "raises when mixing positional binds with collected named binds" do
+          q = app_query(<<~SQL).render(titles: ["More", "And even more"])
+            SELECT title FROM articles WHERE id = $1
+            UNION ALL
+            <%= values(titles.zip) %>
+          SQL
+
+          expect {
+            q.select_all(binds: [1])
+          }.to raise_error(ArgumentError, /Cannot use positional binds.*Use named binds/)
+        end
+
         specify "named binds" do
           q = query.with_select(<<~SQL)
             SELECT * FROM articles
@@ -211,6 +415,20 @@ RSpec.describe AppQuery::Q do
           SQL
 
           expect(q.select_one(binds: {title_ilike: "%title"})).to include("title" => "Other title")
+        end
+
+        specify "named binds combined with values helper" do
+          q = app_query(<<~SQL).render(titles: ["More", "And even more"])
+            WITH articles(id, title) AS (
+              VALUES (1, 'Original')
+            )
+            SELECT title FROM articles WHERE id = :id
+            UNION ALL
+            <%= values(titles.map { [_1] }) %>
+          SQL
+
+          result = q.select_all(binds: {id: 1})
+          expect(result.column("title")).to eq(["Original", "More", "And even more"])
         end
       end
 

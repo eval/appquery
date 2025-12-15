@@ -95,60 +95,65 @@ Testdriving can be easily done from the console. Either by cloning this reposito
   ```
 </details>
 
-The following examples assume PostgreSQL (SQLite where stated):
+The prompt indicates what adapter the example uses:
 
 ```ruby
 # showing select_(all|one|value)
-> AppQuery(%{select date('now') as today}).select_all.to_a
+[postgresql]> AppQuery(%{select date('now') as today}).select_all.to_a
 => [{"today" => "2025-05-10"}]
-> AppQuery(%{select date('now') as today}).select_one
+[postgresql]> AppQuery(%{select date('now') as today}).select_one
 => {"today" => "2025-05-10"}
-> AppQuery(%{select date('now') as today}).select_value
+[postgresql]> AppQuery(%{select date('now') as today}).select_value
 => "2025-05-10"
 
 # binds
 # positional binds
-> AppQuery(%{select now() - ($1)::interval as date}).select_value(binds: ['2 days'])
+[postgresql]> AppQuery(%{select now() - ($1)::interval as date}).select_value(binds: ['2 days'])
 # named binds
-> AppQuery(%{select now() - (:interval)::interval as date}).select_value(binds: {interval: '2 days'})
+[postgresql]> AppQuery(%{select now() - (:interval)::interval as date}).select_value(binds: {interval: '2 days'})
 
 # casting
-> AppQuery(%{select date('now') as today}).select_all(cast: true).to_a
+[postgresql]> AppQuery(%{select date('now') as today}).select_all(cast: true).to_a
 => [{"today" => Sat, 10 May 2025}]
 
 ## SQLite doesn't have a notion of dates or timestamp's so casting won't do anything:
-sqlite> AppQuery(%{select date('now') as today}).select_one(cast: true)
+[sqlite]> AppQuery(%{select date('now') as today}).select_one(cast: true)
 => {"today" => "2025-05-12"}
 ## Providing per-column-casts fixes this:
 casts = {"today" => ActiveRecord::Type::Date.new}
-sqlite> AppQuery(%{select date('now') as today}).select_one(cast: casts)
+[sqlite]> AppQuery(%{select date('now') as today}).select_one(cast: casts)
 => {"today" => Mon, 12 May 2025}
 
+
 # rewriting queries (using CTEs)
-q = AppQuery(<<~SQL)
-  WITH articles(id,title,published_on) AS (
-    values(1, 'Some title', '2024-3-31'),
-          (2, 'Other title', '2024-10-31'),
-          (3, 'Same title?', '2024-3-31'))
+[postgresql]> articles = [
+  [1, "Using my new static site generator", 2.months.ago.to_date],
+  [2, "Let's learn SQL", 1.month.ago.to_date],
+  [3, "Another article", 2.weeks.ago.to_date]
+]
+[postgresql]> q = AppQuery(<<~SQL, cast: {"published_on" => ActiveRecord::Type::Date.new}).render(articles:)
+  WITH articles(id,title,published_on) AS (<%= values(articles) %>)
   select * from articles order by id DESC
 SQL
 
 ## query the articles-CTE
-q.select_all(select: %{select * from articles where id < 2}).to_a
+[postgresql]> q.select_all(select: %{select * from articles where id < 2}).to_a
 
 ## query the end-result (available as the CTE named '_')
-q.select_one(select: %{select * from _ limit 1})
+[postgresql]> q.select_one(select: %{select * from _ limit 1})
 
 ## ERB templating
 # Extract a query from q that can be sorted dynamically:
-q2 = q.with_select("select id,title,published_on::date from articles <%= order_by(order) %>")
-q2.render(order: {"published_on::date": :desc, 'lower(title)': "asc"}).select_all.entries
+[postgresql]> q2 = q.with_select("select id,title,published_on::date from articles <%= order_by(order) %>")
+[postgresql]> q2.render(order: {"published_on::date": :desc, 'lower(title)': "asc"}).select_all.entries
+
 # shows latest articles first, and titles sorted alphabetically
 # for articles published on the same date.
 # order_by raises when it's passed something that would result in just `ORDER BY`:
-q2.render(order: {})
+[postgresql]> q2.render(order: {})
+
 # doing a select using a query that should be rendered, a `AppQuery::UnrenderedQueryError` will be raised:
-q2.select_all.entries
+[postgresql]> q2.select_all.entries
 
 # NOTE you can use both `order` and `@order`: local variables like `order` are required,
 # while instance variables like `@order` are optional.
@@ -249,7 +254,8 @@ AppQuery[:recent_articles].select_all.entries
 # we can provide a different cut off date via binds^1:
 AppQuery[:recent_articles].select_all(binds: [1.month.ago]).entries
 
-1) note that SQLite can deal with unbound parameters, i.e. when no binds are provided it assumes null for $1 and $2 (which our query can deal with).
+1) note that SQLite can deal with unbound parameters, i.e. when no binds are provided it assumes null for
+  $1 and $2 (which our query can deal with).
   For Postgres you would always need to provide 2 values, e.g. `binds: [nil, nil]`.
 ```
 
@@ -567,7 +573,7 @@ query.replace_cte("recent_articles as (select values(1, 'Some article'))")
 ## Compatibility
 
 - 💾 tested with **SQLite** and **PostgreSQL**
-- 🚆 tested with Rails **v6.1**, **v7** and **v8.0**
+- 🚆 tested with Rails v7.x and v8.x (might still work with v6.1, but is no longer included in the test-matrix)
 - 💎 requires Ruby **>=v3.2**  
   Goal is to support [maintained Ruby versions](https://www.ruby-lang.org/en/downloads/branches/).
 
@@ -581,11 +587,14 @@ Using [mise](https://mise.jdx.dev/) for env-vars recommended.
 
 The [console-script](./bin/console) is setup such that it's easy to connect with a database and experiment with the library:
 ```bash
-$ ./bin/console sqlite3::memory:
-$ ./bin/console postgres://localhost:5432/some_db
+$ bin/console sqlite3::memory:
+$ bin/console postgres://localhost:5432/some_db
 
 # more details
-$ ./bin/console -h
+$ bin/console -h
+
+# when needing an appraisal, use bin/run (this ensures signals are handled correctly):
+$ bin/run rails_head console
 ```
 
 ### various

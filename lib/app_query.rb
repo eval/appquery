@@ -122,7 +122,16 @@ module AppQuery
 
     def render(vars)
       vars ||= {}
-      with_sql(to_erb.result(render_helper(vars).get_binding))
+      helper = render_helper(vars)
+      sql = to_erb.result(helper.get_binding)
+      collected = helper.collected_binds
+
+      with_sql(sql).tap do |q|
+        # Merge collected binds with existing binds (convert array to hash if needed)
+        existing = @binds.is_a?(Hash) ? @binds : {}
+        new_binds = existing.merge(collected)
+        q.instance_variable_set(:@binds, new_binds) if new_binds.any?
+      end
     end
 
     def to_erb
@@ -134,9 +143,82 @@ module AppQuery
       Module.new do
         extend self
 
+        @collected_binds = {}
+        @placeholder_counter = 0
+
         vars.each do |k, v|
           define_method(k) { v }
           instance_variable_set(:"@#{k}", v)
+        end
+
+        def collect_bind(value)
+          @placeholder_counter += 1
+          key = :"b#{@placeholder_counter}"
+          @collected_binds[key] = value
+          ":#{key}"
+        end
+
+        attr_reader :collected_binds
+
+        # Examples
+        #   quote("Let's learn Ruby") #=> 'Let''s learn Ruby'
+        def quote(...)
+          ActiveRecord::Base.connection.quote(...)
+        end
+
+        # Examples
+        #   <%= bind(title) %> #=> :b1 (with title added to binds)
+        def bind(value)
+          collect_bind(value)
+        end
+
+        # Examples
+        #   <%= values([[1, "Some video"], [2, "Another video"]]) %>
+        #   #=> VALUES (:b1, :b2), (:b3, :b4) with binds {b1: 1, b2: "Some video", ...}
+        #
+        #   <%= values([{id: 1, title: "Some video"}]) %>
+        #   #=> (id, title) VALUES (:b1, :b2) with binds {b1: 1, b2: "Some video"}
+        #
+        #   <%= values([{title: "A"}, {title: "B", published_on: "2024-01-01"}]) %>
+        #   #=> (title, published_on) VALUES (:b1, NULL), (:b2, :b3)
+        #
+        # Skip column names (e.g. for UNION ALL or CTEs):
+        #   with articles as(
+        #     <%= values([[1, "title"]], skip_columns: true) %>
+        #   )
+        #   #=> with articles as (VALUES (:b1, :b2))
+        #
+        # With block (mix bind() and quote()):
+        #   <%= values(videos) { |v| [bind(v[:id]), quote(v[:title]), 'now()'] } %>
+        #   #=> VALUES (:b1, 'Some title', now()), (:b2, 'Other title', now())
+        def values(coll, skip_columns: false, &block)
+          first = coll.first
+
+          # For hash collections, collect all unique keys
+          if first.is_a?(Hash) && !block
+            all_keys = coll.flat_map(&:keys).uniq
+
+            rows = coll.map do |row|
+              vals = all_keys.map { |k| row.key?(k) ? collect_bind(row[k]) : "NULL" }
+              "(#{vals.join(", ")})"
+            end
+
+            columns = skip_columns ? "" : "(#{all_keys.join(", ")}) "
+            "#{columns}VALUES #{rows.join(",\n")}"
+          else
+            # Arrays or block - current behavior
+            rows = coll.map do |item|
+              vals = if block
+                block.call(item)
+              elsif item.is_a?(Array)
+                item.map { |v| collect_bind(v) }
+              else
+                [collect_bind(item)]
+              end
+              "(#{vals.join(", ")})"
+            end
+            "VALUES #{rows.join(",\n")}"
+          end
         end
 
         # Examples
@@ -164,21 +246,34 @@ module AppQuery
     end
     private :render_helper
 
-    def select_all(binds: [], select: nil, cast: self.cast)
-      binds = binds.presence || @binds
+    # TODO: have aliases for common casts: select_all(cast: {"today" => :date})
+    def select_all(binds: nil, select: nil, cast: self.cast)
       with_select(select).render({}).then do |aq|
-        if binds.is_a?(Hash)
-          sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
-            Arel.sql(aq.to_s, **binds)
-          else
-            ActiveRecord::Base.sanitize_sql_array([aq.to_s, **binds])
+        # Support both positional (array) and named (hash) binds
+        if binds.is_a?(Array)
+          if @binds.is_a?(Hash) && @binds.any?
+            raise ArgumentError, "Cannot use positional binds (Array) when query has collected named binds from values()/bind() helpers. Use named binds (Hash) instead."
           end
-          ActiveRecord::Base.connection.select_all(sql, name).then do |result|
+          # Positional binds using $1, $2, etc.
+          ActiveRecord::Base.connection.select_all(aq.to_s, name, binds).then do |result|
             Result.from_ar_result(result, cast)
           end
         else
-          ActiveRecord::Base.connection.select_all(aq.to_s, name, binds).then do |result|
-            Result.from_ar_result(result, cast)
+          # Named binds - merge collected binds with explicitly passed binds
+          merged_binds = (@binds.is_a?(Hash) ? @binds : {}).merge(binds || {})
+          if merged_binds.any?
+            sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
+              Arel.sql(aq.to_s, **merged_binds)
+            else
+              ActiveRecord::Base.sanitize_sql_array([aq.to_s, **merged_binds])
+            end
+            ActiveRecord::Base.connection.select_all(sql, name).then do |result|
+              Result.from_ar_result(result, cast)
+            end
+          else
+            ActiveRecord::Base.connection.select_all(aq.to_s, name).then do |result|
+              Result.from_ar_result(result, cast)
+            end
           end
         end
       end
@@ -188,12 +283,97 @@ module AppQuery
       raise UnrenderedQueryError, "Query is ERB. Use #render before select-ing."
     end
 
-    def select_one(binds: [], select: nil, cast: self.cast)
+    def select_one(binds: nil, select: nil, cast: self.cast)
       select_all(binds:, select:, cast:).first
     end
 
-    def select_value(binds: [], select: nil, cast: self.cast)
+    def select_value(binds: nil, select: nil, cast: self.cast)
       select_one(binds:, select:, cast:)&.values&.first
+    end
+
+    # Examples
+    #   AppQuery(<<~SQL).insert(binds: ["Let's learn SQL!"])
+    #     INSERT INTO videos(title, created_at, updated_at) values($1, now(), now())
+    #   SQL
+    #
+    #   articles = [
+    #     {title: "First article"}
+    #   ].map { it.merge(created_at: Time.current)}
+    #   AppQuery(<<~SQL).render(articles:)
+    #     INSERT INTO articles(title, created_at) <%= values(articles) %>
+    #   SQL
+    def insert(binds: [], returning: nil)
+      # ActiveRecord::Base.connection.insert(sql, name, _pk = nil, _id_value = nil, _sequence_name = nil, binds, returning: nil)
+      if returning && ActiveRecord::VERSION::STRING.to_f < 7.1
+        raise ArgumentError, "The 'returning' option requires Rails 7.1+. Current version: #{ActiveRecord::VERSION::STRING}"
+      end
+
+      binds = binds.presence || @binds
+      render({}).then do |aq|
+        if binds.is_a?(Hash)
+          sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
+            Arel.sql(aq.to_s, **binds)
+          else
+            ActiveRecord::Base.sanitize_sql_array([aq.to_s, **binds])
+          end
+          if ActiveRecord::VERSION::STRING.to_f >= 7.1
+            ActiveRecord::Base.connection.insert(sql, name, returning:)
+          else
+            ActiveRecord::Base.connection.insert(sql, name)
+          end
+        elsif ActiveRecord::VERSION::STRING.to_f >= 7.1
+          # pk is the less flexible returning
+          ActiveRecord::Base.connection.insert(aq.to_s, name, _pk = nil, _id_value = nil, _sequence_name = nil, binds, returning:)
+        else
+          ActiveRecord::Base.connection.insert(aq.to_s, name, _pk = nil, _id_value = nil, _sequence_name = nil, binds)
+        end
+      end
+    rescue NameError => e
+      # Prevent any subclasses, e.g. NoMethodError
+      raise e unless e.instance_of?(NameError)
+      raise UnrenderedQueryError, "Query is ERB. Use #render before select-ing."
+    end
+
+    # Examples:
+    #   AppQuery("UPDATE videos SET title = 'New' WHERE id = :id").update(binds: {id: 1})
+    def update(binds: [])
+      binds = binds.presence || @binds
+      render({}).then do |aq|
+        if binds.is_a?(Hash)
+          sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
+            Arel.sql(aq.to_s, **binds)
+          else
+            ActiveRecord::Base.sanitize_sql_array([aq.to_s, **binds])
+          end
+          ActiveRecord::Base.connection.update(sql, name)
+        else
+          ActiveRecord::Base.connection.update(aq.to_s, name, binds)
+        end
+      end
+    rescue NameError => e
+      raise e unless e.instance_of?(NameError)
+      raise UnrenderedQueryError, "Query is ERB. Use #render before updating."
+    end
+
+    # Examples:
+    #   AppQuery("DELETE FROM videos WHERE id = :id").delete(binds: {id: 1})
+    def delete(binds: [])
+      binds = binds.presence || @binds
+      render({}).then do |aq|
+        if binds.is_a?(Hash)
+          sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
+            Arel.sql(aq.to_s, **binds)
+          else
+            ActiveRecord::Base.sanitize_sql_array([aq.to_s, **binds])
+          end
+          ActiveRecord::Base.connection.delete(sql, name)
+        else
+          ActiveRecord::Base.connection.delete(aq.to_s, name, binds)
+        end
+      end
+    rescue NameError => e
+      raise e unless e.instance_of?(NameError)
+      raise UnrenderedQueryError, "Query is ERB. Use #render before deleting."
     end
 
     def tokens

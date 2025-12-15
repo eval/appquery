@@ -71,15 +71,30 @@ if url = (ARGV.shift || (!ENV["CONSOLE_DATABASE_URL"]&.empty? && ENV["CONSOLE_DA
   ActiveRecord::Base.establish_connection(url:)
 else
   log [@blue, "❌ database url not provided - skipping database setup."]
-MSG
 end
 
 def reload!
-  load Bundler.root.join("lib/app_query.rb").to_s
+  Object.send(:remove_const, :AppQuery) if defined?(AppQuery)
+
+  root = File.expand_path("../lib", __dir__)
+  %w[
+    app_query/version.rb
+    app_query/tokenizer.rb
+    app_query.rb
+    app_query/base.rb
+  ].each { |f| load File.join(root, f) }
+  true
 end
 log [@yellow, "🛠️ Use `reload!` after making code changes"]
 
 # not meant as a helper
 undef :ansi_wrap, :ansi_escape
+
+# Ensure correct Dir.pwd (and not set by appraisal)
+ENV["IRBRC"] ||= File.expand_path("../.irbrc", __dir__)
+
 require "irb"
-IRB.start(__FILE__)
+unless IRB.initialized?
+  puts "Available helper methods: [reload!]"
+  IRB.start(__FILE__)
+end
