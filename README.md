@@ -1,6 +1,7 @@
 # AppQuery - raw SQL 🥦, cooked :stew:
 
 [![Gem Version](https://badge.fury.io/rb/appquery.svg)](https://badge.fury.io/rb/appquery)
+[![API Docs](https://img.shields.io/badge/API_Docs-YARD-blue.svg)](https://eval.github.io/appquery/)
 
 A Rubygem :gem: that makes working with raw SQL (READ) queries in Rails projects more convenient.  
 Specifically it provides:

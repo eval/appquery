@@ -10,6 +10,7 @@ require "active_record"
 #
 # @example Using the global function
 #   AppQuery("SELECT * FROM users WHERE id = $1").select_one(binds: [1])
+#   AppQuery("SELECT * FROM users WHERE id = :id").select_one(binds: {id: 1})
 #
 # @example Loading queries from files
 #   # Loads from app/queries/invoices.sql
@@ -19,6 +20,13 @@ require "active_record"
 #   AppQuery.configure do |config|
 #     config.query_path = "db/queries"
 #   end
+#
+# @example CTE manipulation
+#   AppQuery(<<~SQL).select_all(select: "select * from articles where id = 1")
+#     WITH articles AS(...)
+#     SELECT * FROM articles
+#     ORDER BY id
+#   SQL
 module AppQuery
   # Generic error class for AppQuery errors.
   class Error < StandardError; end
