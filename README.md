@@ -3,17 +3,11 @@
 [![Gem Version](https://badge.fury.io/rb/appquery.svg)](https://badge.fury.io/rb/appquery)
 [![API Docs](https://img.shields.io/badge/API_Docs-YARD-blue.svg)](https://eval.github.io/appquery/)
 
-A Rubygem :gem: that makes working with raw SQL (READ) queries in Rails projects more convenient.  
+A Rubygem :gem: that makes working with raw SQL queries in Rails projects convenient.  
 Specifically it provides:
 - **...a dedicated folder for queries**  
   e.g. `app/queries/reports/weekly.sql` is instantiated via `AppQuery["reports/weekly"]`.
-- **...Rails/rspec generators**  
-  ```
-  $ rails generate query reports/weekly
-    create  app/queries/reports/weekly.sql
-    invoke  rspec
-    create    spec/queries/reports/weekly_query_spec.rb
-  ```
+
 - **...ERB templating**  
   Simple ERB templating with helper-functions:
   ```sql
@@ -27,7 +21,9 @@ Specifically it provides:
 - **...positional and named binds**  
   Intuitive binds:
   ```ruby
-  AppQuery(%{select now() - (:interval)::interval as some_date}).select_value(binds: {interval: '1 day'})
+  AppQuery(<<~SQL).select_value(binds: {interval: '1 day'})
+    select now() - (:interval)::interval as some_date
+  SQL
   AppQuery(<<~SQL).select_all(binds: [2.day.ago, Time.now, '5 minutes']).column("series")
     select generate_series($1::timestamp, $2::timestamp, $3::interval) as series
   SQL
@@ -49,8 +45,8 @@ Specifically it provides:
       VALUES(1, 'Some title'),
             (2, 'Another article'))
   CTE
-  ```  
-- **...rspec-helpers**  
+  ```
+- **...rspec generators and helpers**  
   ```ruby
   RSpec.describe "AppQuery reports/weekly", type: :query do
     describe "CTE some_cte" do
