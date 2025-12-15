@@ -1,0 +1,12 @@
+--readme README.md
+--title "AppQuery Documentation"
+--markup markdown
+--no-private
+--output-dir doc
+--exclude tmp/
+--exclude spec/
+--exclude examples/
+--exclude gemfiles/
+lib/**/*.rb
+- LICENSE.txt
+- CHANGELOG.md

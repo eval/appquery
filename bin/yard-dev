@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+echo "Visit http://localhost:8809"
+bundle exec yard server --reload --port 8809
