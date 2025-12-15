@@ -5,21 +5,56 @@ require_relative "app_query/tokenizer"
 require_relative "app_query/render_helpers"
 require "active_record"
 
+# AppQuery provides a way to work with raw SQL queries using ERB templating,
+# parameter binding, and CTE manipulation.
+#
+# @example Using the global function
+#   AppQuery("SELECT * FROM users WHERE id = $1").select_one(binds: [1])
+#
+# @example Loading queries from files
+#   # Loads from app/queries/invoices.sql
+#   AppQuery[:invoices].select_all
+#
+# @example Configuration
+#   AppQuery.configure do |config|
+#     config.query_path = "db/queries"
+#   end
 module AppQuery
+  # Generic error class for AppQuery errors.
   class Error < StandardError; end
 
+  # Raised when attempting to execute a query that contains unrendered ERB.
   class UnrenderedQueryError < StandardError; end
 
+  # Configuration options for AppQuery.
+  #
+  # @!attribute query_path
+  #   @return [String] the directory path where query files are located
+  #     (default: "app/queries")
   Configuration = Struct.new(:query_path)
 
+  # Returns the current configuration.
+  #
+  # @return [Configuration] the configuration instance
   def self.configuration
     @configuration ||= AppQuery::Configuration.new
   end
 
+  # Yields the configuration for modification.
+  #
+  # @yield [Configuration] the configuration instance
+  #
+  # @example
+  #   AppQuery.configure do |config|
+  #     config.query_path = "db/queries"
+  #   end
   def self.configure
     yield configuration if block_given?
   end
 
+  # Resets configuration to default values.
+  #
+  # @return [void]
   def self.reset_configuration!
     configure do |config|
       config.query_path = "app/queries"
@@ -27,10 +62,20 @@ module AppQuery
   end
   reset_configuration!
 
-  # Examples:
-  #   AppQuery[:invoices] # looks for invoices.sql
-  #   AppQuery["reports/weekly"]
-  #   AppQuery["invoices.sql.erb"]
+  # Loads a query from a file in the configured query path.
+  #
+  # @param query_name [String, Symbol] the query name or path (without extension)
+  # @param opts [Hash] additional options passed to {Q#initialize}
+  # @return [Q] a new query object loaded from the file
+  #
+  # @example Load a simple query
+  #   AppQuery[:invoices]  # loads app/queries/invoices.sql
+  #
+  # @example Load from a subdirectory
+  #   AppQuery["reports/weekly"]  # loads app/queries/reports/weekly.sql
+  #
+  # @example Load with explicit extension
+  #   AppQuery["invoices.sql.erb"]  # loads app/queries/invoices.sql.erb
   def self.[](query_name, **opts)
     filename = File.extname(query_name.to_s).empty? ? "#{query_name}.sql" : query_name.to_s
     full_path = (Pathname.new(configuration.query_path) / filename).expand_path
@@ -103,6 +148,19 @@ module AppQuery
   # Q wraps a SQL string (optionally with ERB templating) and provides methods
   # for query execution, CTE manipulation, and result handling.
   #
+  # ## Method Groups
+  #
+  # - **Rendering** — Process ERB templates to produce executable SQL.
+  # - **Query Execution** — Execute queries against the database. These methods
+  #   wrap the equivalent `ActiveRecord::Base.connection` methods (`select_all`,
+  #   `insert`, `update`, `delete`).
+  # - **Query Introspection** — Inspect and analyze the structure of the query.
+  # - **Query Transformation** — Create modified copies of the query. All
+  #   transformation methods are immutable—they return a new {Q} instance and
+  #   leave the original unchanged.
+  # - **CTE Manipulation** — Add, replace, or reorder Common Table Expressions
+  #   (CTEs). Like transformation methods, these return a new {Q} instance.
+  #
   # @example Basic query
   #   AppQuery("SELECT * FROM users WHERE id = $1").select_one(binds: [1])
   #
@@ -157,6 +215,8 @@ module AppQuery
       self
     end
     private :reset!
+
+    # @!group Rendering
 
     # Renders the ERB template with the given variables.
     #
@@ -233,6 +293,8 @@ module AppQuery
       end
     end
     private :render_helper
+
+    # @!group Query Execution
 
     # Executes the query and returns all matching rows.
     #
@@ -445,6 +507,8 @@ module AppQuery
       raise UnrenderedQueryError, "Query is ERB. Use #render before deleting."
     end
 
+    # @!group Query Introspection
+
     # Returns the tokenized representation of the SQL.
     #
     # @return [Array<Hash>] array of token hashes with :t (type) and :v (value) keys
@@ -470,6 +534,8 @@ module AppQuery
     def cte_names
       tokens.filter { _1[:t] == "CTE_IDENTIFIER" }.map { _1[:v] }
     end
+
+    # @!group Query Transformation
 
     # Returns a new query with different bind parameters.
     #
@@ -532,6 +598,8 @@ module AppQuery
       end
     end
 
+    # @!group Query Introspection
+
     # Returns the SELECT clause of the query.
     #
     # @return [String, nil] the SELECT clause, or nil if not found
@@ -553,6 +621,8 @@ module AppQuery
     def recursive?
       !!tokens.find { _1[:t] == "RECURSIVE" }
     end
+
+    # @!group CTE Manipulation
 
     # Prepends a CTE to the beginning of the WITH clause.
     #
@@ -674,6 +744,8 @@ module AppQuery
         end
       end.join)
     end
+
+    # @!endgroup
 
     # Returns the SQL string.
     #
