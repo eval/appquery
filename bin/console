@@ -80,6 +80,7 @@ def reload!
   %w[
     app_query/version.rb
     app_query/tokenizer.rb
+    app_query/render_helpers.rb
     app_query.rb
     app_query/base.rb
   ].each { |f| load File.join(root, f) }
