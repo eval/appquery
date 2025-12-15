@@ -1,5 +1,10 @@
 ## [Unreleased]
 
-## [0.1.0] - 2024-10-13
+## [0.4.0] - 2025-12-15
 
-- Initial release
+### features
+
+- add insert, update and delete
+- API docs at [eval.github.io/appquery](https://eval.github.io/appquery)
+- add ERB-helpers [values, bind and quote ](https://eval.github.io/appquery/AppQuery/RenderHelpers.html).
+- enabled trusted publishing to rubygems.org
