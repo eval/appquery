@@ -2,23 +2,67 @@
 
 require_relative "app_query/version"
 require_relative "app_query/tokenizer"
+require_relative "app_query/render_helpers"
 require "active_record"
 
+# AppQuery provides a way to work with raw SQL queries using ERB templating,
+# parameter binding, and CTE manipulation.
+#
+# @example Using the global function
+#   AppQuery("SELECT * FROM users WHERE id = $1").select_one(binds: [1])
+#   AppQuery("SELECT * FROM users WHERE id = :id").select_one(binds: {id: 1})
+#
+# @example Loading queries from files
+#   # Loads from app/queries/invoices.sql
+#   AppQuery[:invoices].select_all
+#
+# @example Configuration
+#   AppQuery.configure do |config|
+#     config.query_path = "db/queries"
+#   end
+#
+# @example CTE manipulation
+#   AppQuery(<<~SQL).select_all(select: "select * from articles where id = 1")
+#     WITH articles AS(...)
+#     SELECT * FROM articles
+#     ORDER BY id
+#   SQL
 module AppQuery
+  # Generic error class for AppQuery errors.
   class Error < StandardError; end
 
+  # Raised when attempting to execute a query that contains unrendered ERB.
   class UnrenderedQueryError < StandardError; end
 
+  # Configuration options for AppQuery.
+  #
+  # @!attribute query_path
+  #   @return [String] the directory path where query files are located
+  #     (default: "app/queries")
   Configuration = Struct.new(:query_path)
 
+  # Returns the current configuration.
+  #
+  # @return [Configuration] the configuration instance
   def self.configuration
     @configuration ||= AppQuery::Configuration.new
   end
 
+  # Yields the configuration for modification.
+  #
+  # @yield [Configuration] the configuration instance
+  #
+  # @example
+  #   AppQuery.configure do |config|
+  #     config.query_path = "db/queries"
+  #   end
   def self.configure
     yield configuration if block_given?
   end
 
+  # Resets configuration to default values.
+  #
+  # @return [void]
   def self.reset_configuration!
     configure do |config|
       config.query_path = "app/queries"
@@ -26,10 +70,20 @@ module AppQuery
   end
   reset_configuration!
 
-  # Examples:
-  #   AppQuery[:invoices] # looks for invoices.sql
-  #   AppQuery["reports/weekly"]
-  #   AppQuery["invoices.sql.erb"]
+  # Loads a query from a file in the configured query path.
+  #
+  # @param query_name [String, Symbol] the query name or path (without extension)
+  # @param opts [Hash] additional options passed to {Q#initialize}
+  # @return [Q] a new query object loaded from the file
+  #
+  # @example Load a simple query
+  #   AppQuery[:invoices]  # loads app/queries/invoices.sql
+  #
+  # @example Load from a subdirectory
+  #   AppQuery["reports/weekly"]  # loads app/queries/reports/weekly.sql
+  #
+  # @example Load with explicit extension
+  #   AppQuery["invoices.sql.erb"]  # loads app/queries/invoices.sql.erb
   def self.[](query_name, **opts)
     filename = File.extname(query_name.to_s).empty? ? "#{query_name}.sql" : query_name.to_s
     full_path = (Pathname.new(configuration.query_path) / filename).expand_path
@@ -97,9 +151,56 @@ module AppQuery
     private_constant :EMPTY
   end
 
+  # Query object for building, rendering, and executing SQL queries.
+  #
+  # Q wraps a SQL string (optionally with ERB templating) and provides methods
+  # for query execution, CTE manipulation, and result handling.
+  #
+  # ## Method Groups
+  #
+  # - **Rendering** — Process ERB templates to produce executable SQL.
+  # - **Query Execution** — Execute queries against the database. These methods
+  #   wrap the equivalent `ActiveRecord::Base.connection` methods (`select_all`,
+  #   `insert`, `update`, `delete`).
+  # - **Query Introspection** — Inspect and analyze the structure of the query.
+  # - **Query Transformation** — Create modified copies of the query. All
+  #   transformation methods are immutable—they return a new {Q} instance and
+  #   leave the original unchanged.
+  # - **CTE Manipulation** — Add, replace, or reorder Common Table Expressions
+  #   (CTEs). Like transformation methods, these return a new {Q} instance.
+  #
+  # @example Basic query
+  #   AppQuery("SELECT * FROM users WHERE id = $1").select_one(binds: [1])
+  #
+  # @example ERB templating
+  #   AppQuery("SELECT * FROM users WHERE name = <%= bind(name) %>")
+  #     .render(name: "Alice")
+  #     .select_all
+  #
+  # @example CTE manipulation
+  #   AppQuery("WITH base AS (SELECT 1) SELECT * FROM base")
+  #     .append_cte("extra AS (SELECT 2)")
+  #     .select_all
   class Q
+    # @return [String, nil] optional name for the query (used in logs)
+    # @return [String] the SQL string
+    # @return [Array, Hash] bind parameters
+    # @return [Boolean, Hash, Array] casting configuration
     attr_reader :name, :sql, :binds, :cast
 
+    # Creates a new query object.
+    #
+    # @param sql [String] the SQL query string (may contain ERB)
+    # @param name [String, nil] optional name for logging
+    # @param filename [String, nil] optional filename for ERB error reporting
+    # @param binds [Array, Hash] bind parameters for the query
+    # @param cast [Boolean, Hash, Array] type casting configuration
+    #
+    # @example Simple query
+    #   Q.new("SELECT * FROM users")
+    #
+    # @example With ERB and binds
+    #   Q.new("SELECT * FROM users WHERE id = :id", binds: {id: 1})
     def initialize(sql, name: nil, filename: nil, binds: [], cast: true)
       @sql = sql
       @name = name
@@ -108,10 +209,13 @@ module AppQuery
       @cast = cast
     end
 
+    # @private
     def deep_dup
       super.send(:reset!)
     end
+    private :deep_dup
 
+    # @private
     def reset!
       (instance_variables - %i[@sql @filename @name @binds @cast]).each do
         instance_variable_set(_1, nil)
@@ -120,7 +224,44 @@ module AppQuery
     end
     private :reset!
 
-    def render(vars)
+    # @!group Rendering
+
+    # Renders the ERB template with the given variables.
+    #
+    # Processes ERB tags in the SQL and collects any bind parameters created
+    # by helpers like {RenderHelpers#bind} and {RenderHelpers#values}.
+    #
+    # @param vars [Hash] variables to make available in the ERB template
+    # @return [Q] a new query object with rendered SQL and collected binds
+    #
+    # @example Rendering with variables
+    #   AppQuery("SELECT * FROM users WHERE name = <%= bind(name) %>")
+    #     .render(name: "Alice")
+    #   # => Q with SQL: "SELECT * FROM users WHERE name = :b1"
+    #   #    and binds: {b1: "Alice"}
+    #
+    # @example Using instance variables
+    #   AppQuery("SELECT * FROM users WHERE active = <%= @active %>")
+    #     .render(active: true)
+    #
+    # @example vars are available as local and instance variable.
+    #   # This fails as `ordering` is not provided:
+    #   AppQuery(<<~SQL).render
+    #     SELECT * FROM articles
+    #     <%= order_by(ordering) %>
+    #   SQL
+    #
+    #   # ...but this query works without `ordering` being passed to render:
+    #   AppQuery(<<~SQL).render
+    #     SELECT * FROM articles
+    #     <%= @ordering.presence && order_by(ordering) %>
+    #   SQL
+    #   # NOTE that `@ordering.present? && ...` would render as `false`.
+    #   # Use `@ordering.presence` instead.
+    #
+    #
+    # @see RenderHelpers for available helper methods in templates
+    def render(vars = {})
       vars ||= {}
       helper = render_helper(vars)
       sql = to_erb.result(helper.get_binding)
@@ -142,6 +283,7 @@ module AppQuery
     def render_helper(vars)
       Module.new do
         extend self
+        include AppQuery::RenderHelpers
 
         @collected_binds = {}
         @placeholder_counter = 0
@@ -151,93 +293,7 @@ module AppQuery
           instance_variable_set(:"@#{k}", v)
         end
 
-        def collect_bind(value)
-          @placeholder_counter += 1
-          key = :"b#{@placeholder_counter}"
-          @collected_binds[key] = value
-          ":#{key}"
-        end
-
         attr_reader :collected_binds
-
-        # Examples
-        #   quote("Let's learn Ruby") #=> 'Let''s learn Ruby'
-        def quote(...)
-          ActiveRecord::Base.connection.quote(...)
-        end
-
-        # Examples
-        #   <%= bind(title) %> #=> :b1 (with title added to binds)
-        def bind(value)
-          collect_bind(value)
-        end
-
-        # Examples
-        #   <%= values([[1, "Some video"], [2, "Another video"]]) %>
-        #   #=> VALUES (:b1, :b2), (:b3, :b4) with binds {b1: 1, b2: "Some video", ...}
-        #
-        #   <%= values([{id: 1, title: "Some video"}]) %>
-        #   #=> (id, title) VALUES (:b1, :b2) with binds {b1: 1, b2: "Some video"}
-        #
-        #   <%= values([{title: "A"}, {title: "B", published_on: "2024-01-01"}]) %>
-        #   #=> (title, published_on) VALUES (:b1, NULL), (:b2, :b3)
-        #
-        # Skip column names (e.g. for UNION ALL or CTEs):
-        #   with articles as(
-        #     <%= values([[1, "title"]], skip_columns: true) %>
-        #   )
-        #   #=> with articles as (VALUES (:b1, :b2))
-        #
-        # With block (mix bind() and quote()):
-        #   <%= values(videos) { |v| [bind(v[:id]), quote(v[:title]), 'now()'] } %>
-        #   #=> VALUES (:b1, 'Some title', now()), (:b2, 'Other title', now())
-        def values(coll, skip_columns: false, &block)
-          first = coll.first
-
-          # For hash collections, collect all unique keys
-          if first.is_a?(Hash) && !block
-            all_keys = coll.flat_map(&:keys).uniq
-
-            rows = coll.map do |row|
-              vals = all_keys.map { |k| row.key?(k) ? collect_bind(row[k]) : "NULL" }
-              "(#{vals.join(", ")})"
-            end
-
-            columns = skip_columns ? "" : "(#{all_keys.join(", ")}) "
-            "#{columns}VALUES #{rows.join(",\n")}"
-          else
-            # Arrays or block - current behavior
-            rows = coll.map do |item|
-              vals = if block
-                block.call(item)
-              elsif item.is_a?(Array)
-                item.map { |v| collect_bind(v) }
-              else
-                [collect_bind(item)]
-              end
-              "(#{vals.join(", ")})"
-            end
-            "VALUES #{rows.join(",\n")}"
-          end
-        end
-
-        # Examples
-        #   <%= order_by({year: :desc, month: :desc}) %>
-        #   #=> ORDER BY year DESC, month DESC
-        #
-        # Using variable:
-        #   <%= order_by(ordering) %>
-        # NOTE Raises when ordering not provided or when blank.
-        #
-        # Make it optional:
-        #   <%= @ordering.presence && order_by(ordering) %>
-        #
-        def order_by(hash)
-          raise ArgumentError, "Provide columns to sort by, e.g. order_by(id: :asc)  (got #{hash.inspect})." unless hash.present?
-          "ORDER BY " + hash.map do |k, v|
-            v.nil? ? k : [k, v.upcase].join(" ")
-          end.join(", ")
-        end
 
         def get_binding
           binding
@@ -246,6 +302,31 @@ module AppQuery
     end
     private :render_helper
 
+    # @!group Query Execution
+
+    # Executes the query and returns all matching rows.
+    #
+    # @param binds [Array, Hash, nil] bind parameters (positional or named)
+    # @param select [String, nil] override the SELECT clause
+    # @param cast [Boolean, Hash, Array] type casting configuration
+    # @return [Result] the query results with optional type casting
+    #
+    # @example Simple query with positional binds
+    #   AppQuery("SELECT * FROM users WHERE id = $1").select_all(binds: [1])
+    #
+    # @example Named binds
+    #   AppQuery("SELECT * FROM users WHERE id = :id").select_all(binds: {id: 1})
+    #
+    # @example With type casting
+    #   AppQuery("SELECT created_at FROM users")
+    #     .select_all(cast: {created_at: ActiveRecord::Type::DateTime.new})
+    #
+    # @example Override SELECT clause
+    #   AppQuery("SELECT * FROM users").select_all(select: "COUNT(*)")
+    #
+    # @raise [UnrenderedQueryError] if the query contains unrendered ERB
+    # @raise [ArgumentError] if mixing positional binds with collected named binds
+    #
     # TODO: have aliases for common casts: select_all(cast: {"today" => :date})
     def select_all(binds: nil, select: nil, cast: self.cast)
       with_select(select).render({}).then do |aq|
@@ -283,25 +364,61 @@ module AppQuery
       raise UnrenderedQueryError, "Query is ERB. Use #render before select-ing."
     end
 
+    # Executes the query and returns the first row.
+    #
+    # @param binds [Array, Hash, nil] bind parameters (positional or named)
+    # @param select [String, nil] override the SELECT clause
+    # @param cast [Boolean, Hash, Array] type casting configuration
+    # @return [Hash, nil] the first row as a hash, or nil if no results
+    #
+    # @example
+    #   AppQuery("SELECT * FROM users WHERE id = $1").select_one(binds: [1])
+    #   # => {"id" => 1, "name" => "Alice"}
+    #
+    # @see #select_all
     def select_one(binds: nil, select: nil, cast: self.cast)
       select_all(binds:, select:, cast:).first
     end
 
+    # Executes the query and returns the first value of the first row.
+    #
+    # @param binds [Array, Hash, nil] bind parameters (positional or named)
+    # @param select [String, nil] override the SELECT clause
+    # @param cast [Boolean, Hash, Array] type casting configuration
+    # @return [Object, nil] the first value, or nil if no results
+    #
+    # @example
+    #   AppQuery("SELECT COUNT(*) FROM users").select_value
+    #   # => 42
+    #
+    # @see #select_one
     def select_value(binds: nil, select: nil, cast: self.cast)
       select_one(binds:, select:, cast:)&.values&.first
     end
 
-    # Examples
+    # Executes an INSERT query.
+    #
+    # @param binds [Array, Hash] bind parameters for the query
+    # @param returning [String, nil] columns to return (Rails 7.1+ only)
+    # @return [Integer, Object] the inserted ID or returning value
+    #
+    # @example With positional binds
     #   AppQuery(<<~SQL).insert(binds: ["Let's learn SQL!"])
-    #     INSERT INTO videos(title, created_at, updated_at) values($1, now(), now())
+    #     INSERT INTO videos(title, created_at, updated_at) VALUES($1, now(), now())
     #   SQL
     #
-    #   articles = [
-    #     {title: "First article"}
-    #   ].map { it.merge(created_at: Time.current)}
-    #   AppQuery(<<~SQL).render(articles:)
+    # @example With values helper
+    #   articles = [{title: "First", created_at: Time.current}]
+    #   AppQuery(<<~SQL).render(articles:).insert
     #     INSERT INTO articles(title, created_at) <%= values(articles) %>
     #   SQL
+    #
+    # @example With returning (Rails 7.1+)
+    #   AppQuery("INSERT INTO users(name) VALUES($1)")
+    #     .insert(binds: ["Alice"], returning: "id, created_at")
+    #
+    # @raise [UnrenderedQueryError] if the query contains unrendered ERB
+    # @raise [ArgumentError] if returning is used with Rails < 7.1
     def insert(binds: [], returning: nil)
       # ActiveRecord::Base.connection.insert(sql, name, _pk = nil, _id_value = nil, _sequence_name = nil, binds, returning: nil)
       if returning && ActiveRecord::VERSION::STRING.to_f < 7.1
@@ -334,8 +451,20 @@ module AppQuery
       raise UnrenderedQueryError, "Query is ERB. Use #render before select-ing."
     end
 
-    # Examples:
-    #   AppQuery("UPDATE videos SET title = 'New' WHERE id = :id").update(binds: {id: 1})
+    # Executes an UPDATE query.
+    #
+    # @param binds [Array, Hash] bind parameters for the query
+    # @return [Integer] the number of affected rows
+    #
+    # @example With named binds
+    #   AppQuery("UPDATE videos SET title = 'New' WHERE id = :id")
+    #     .update(binds: {id: 1})
+    #
+    # @example With positional binds
+    #   AppQuery("UPDATE videos SET title = $1 WHERE id = $2")
+    #     .update(binds: ["New Title", 1])
+    #
+    # @raise [UnrenderedQueryError] if the query contains unrendered ERB
     def update(binds: [])
       binds = binds.presence || @binds
       render({}).then do |aq|
@@ -355,8 +484,18 @@ module AppQuery
       raise UnrenderedQueryError, "Query is ERB. Use #render before updating."
     end
 
-    # Examples:
+    # Executes a DELETE query.
+    #
+    # @param binds [Array, Hash] bind parameters for the query
+    # @return [Integer] the number of deleted rows
+    #
+    # @example With named binds
     #   AppQuery("DELETE FROM videos WHERE id = :id").delete(binds: {id: 1})
+    #
+    # @example With positional binds
+    #   AppQuery("DELETE FROM videos WHERE id = $1").delete(binds: [1])
+    #
+    # @raise [UnrenderedQueryError] if the query contains unrendered ERB
     def delete(binds: [])
       binds = binds.presence || @binds
       render({}).then do |aq|
@@ -376,36 +515,85 @@ module AppQuery
       raise UnrenderedQueryError, "Query is ERB. Use #render before deleting."
     end
 
+    # @!group Query Introspection
+
+    # Returns the tokenized representation of the SQL.
+    #
+    # @return [Array<Hash>] array of token hashes with :t (type) and :v (value) keys
+    # @see Tokenizer
     def tokens
       @tokens ||= tokenizer.run
     end
 
+    # Returns the tokenizer instance for this query.
+    #
+    # @return [Tokenizer] the tokenizer
     def tokenizer
       @tokenizer ||= Tokenizer.new(to_s)
     end
 
+    # Returns the names of all CTEs (Common Table Expressions) in the query.
+    #
+    # @return [Array<String>] the CTE names in order of appearance
+    #
+    # @example
+    #   AppQuery("WITH a AS (SELECT 1), b AS (SELECT 2) SELECT * FROM a, b").cte_names
+    #   # => ["a", "b"]
     def cte_names
       tokens.filter { _1[:t] == "CTE_IDENTIFIER" }.map { _1[:v] }
     end
 
+    # @!group Query Transformation
+
+    # Returns a new query with different bind parameters.
+    #
+    # @param binds [Array, Hash] the new bind parameters
+    # @return [Q] a new query object with the specified binds
+    #
+    # @example
+    #   query = AppQuery("SELECT * FROM users WHERE id = :id")
+    #   query.with_binds(id: 1).select_one
     def with_binds(binds)
       deep_dup.tap do
         _1.instance_variable_set(:@binds, binds)
       end
     end
 
+    # Returns a new query with different cast settings.
+    #
+    # @param cast [Boolean, Hash, Array] the new cast configuration
+    # @return [Q] a new query object with the specified cast settings
+    #
+    # @example
+    #   query = AppQuery("SELECT created_at FROM users")
+    #   query.with_cast(false).select_all  # disable casting
     def with_cast(cast)
       deep_dup.tap do
         _1.instance_variable_set(:@cast, cast)
       end
     end
 
+    # Returns a new query with different SQL.
+    #
+    # @param sql [String] the new SQL string
+    # @return [Q] a new query object with the specified SQL
     def with_sql(sql)
       deep_dup.tap do
         _1.instance_variable_set(:@sql, sql)
       end
     end
 
+    # Returns a new query with a modified SELECT statement.
+    #
+    # If the query has a CTE named `"_"`, replaces the SELECT statement.
+    # Otherwise, wraps the original query in a `"_"` CTE and uses the new SELECT.
+    #
+    # @param sql [String, nil] the new SELECT statement (nil returns self)
+    # @return [Q] a new query object with the modified SELECT
+    #
+    # @example
+    #   AppQuery("SELECT id, name FROM users").with_select("SELECT COUNT(*) FROM _")
+    #   # => "WITH _ AS (\n  SELECT id, name FROM users\n)\nSELECT COUNT(*) FROM _"
     def with_select(sql)
       return self if sql.nil?
       if cte_names.include?("_")
@@ -418,16 +606,48 @@ module AppQuery
       end
     end
 
+    # @!group Query Introspection
+
+    # Returns the SELECT clause of the query.
+    #
+    # @return [String, nil] the SELECT clause, or nil if not found
+    #
+    # @example
+    #   AppQuery("SELECT id, name FROM users").select
+    #   # => "SELECT id, name FROM users"
     def select
       tokens.find { _1[:t] == "SELECT" }&.[](:v)
     end
 
+    # Checks if the query uses RECURSIVE CTEs.
+    #
+    # @return [Boolean] true if the query contains WITH RECURSIVE
+    #
+    # @example
+    #   AppQuery("WITH RECURSIVE t AS (...) SELECT * FROM t").recursive?
+    #   # => true
     def recursive?
       !!tokens.find { _1[:t] == "RECURSIVE" }
     end
 
-    # example:
-    #  AppQuery("select 1").prepend_cte("foo as(select 1)")
+    # @!group CTE Manipulation
+
+    # Prepends a CTE to the beginning of the WITH clause.
+    #
+    # If the query has no CTEs, wraps it with WITH. If the query already has
+    # CTEs, adds the new CTE at the beginning.
+    #
+    # @param cte [String] the CTE definition (e.g., "foo AS (SELECT 1)")
+    # @return [Q] a new query object with the prepended CTE
+    #
+    # @example Adding a CTE to a simple query
+    #   AppQuery("SELECT 1").prepend_cte("foo AS (SELECT 2)")
+    #   # => "WITH foo AS (SELECT 2) SELECT 1"
+    #
+    # @example Prepending to existing CTEs
+    #   AppQuery("WITH bar AS (SELECT 2) SELECT * FROM bar")
+    #     .prepend_cte("foo AS (SELECT 1)")
+    #   # => "WITH foo AS (SELECT 1), bar AS (SELECT 2) SELECT * FROM bar"
     def prepend_cte(cte)
       # early raise when cte is not valid sql
       to_append = Tokenizer.tokenize(cte, state: :lex_prepend_cte).then do |tokens|
@@ -448,8 +668,22 @@ module AppQuery
       end
     end
 
-    # example:
-    #  AppQuery("select 1").append_cte("foo as(select 1)")
+    # Appends a CTE to the end of the WITH clause.
+    #
+    # If the query has no CTEs, wraps it with WITH. If the query already has
+    # CTEs, adds the new CTE at the end.
+    #
+    # @param cte [String] the CTE definition (e.g., "foo AS (SELECT 1)")
+    # @return [Q] a new query object with the appended CTE
+    #
+    # @example Adding a CTE to a simple query
+    #   AppQuery("SELECT 1").append_cte("foo AS (SELECT 2)")
+    #   # => "WITH foo AS (SELECT 2) SELECT 1"
+    #
+    # @example Appending to existing CTEs
+    #   AppQuery("WITH bar AS (SELECT 2) SELECT * FROM bar")
+    #     .append_cte("foo AS (SELECT 1)")
+    #   # => "WITH bar AS (SELECT 2), foo AS (SELECT 1) SELECT * FROM bar"
     def append_cte(cte)
       # early raise when cte is not valid sql
       add_recursive, to_append = Tokenizer.tokenize(cte, state: :lex_append_cte).then do |tokens|
@@ -477,8 +711,17 @@ module AppQuery
       end
     end
 
-    # Replaces an existing cte.
-    # Raises `ArgumentError` when cte does not exist.
+    # Replaces an existing CTE with a new definition.
+    #
+    # @param cte [String] the new CTE definition (must have same name as existing CTE)
+    # @return [Q] a new query object with the replaced CTE
+    #
+    # @example
+    #   AppQuery("WITH foo AS (SELECT 1) SELECT * FROM foo")
+    #     .replace_cte("foo AS (SELECT 2)")
+    #   # => "WITH foo AS (SELECT 2) SELECT * FROM foo"
+    #
+    # @raise [ArgumentError] if the CTE name doesn't exist in the query
     def replace_cte(cte)
       add_recursive, to_append = Tokenizer.tokenize(cte, state: :lex_recursive_cte).then do |tokens|
         [!recursive? && tokens.find { _1[:t] == "RECURSIVE" },
@@ -510,12 +753,27 @@ module AppQuery
       end.join)
     end
 
+    # @!endgroup
+
+    # Returns the SQL string.
+    #
+    # @return [String] the SQL query string
     def to_s
       @sql
     end
   end
 end
 
+# Convenience method to create a new {AppQuery::Q} instance.
+#
+# Accepts the same arguments as {AppQuery::Q#initialize}.
+#
+# @return [AppQuery::Q] a new query object
+#
+# @example
+#   AppQuery("SELECT * FROM users WHERE id = $1").select_one(binds: [1])
+#
+# @see AppQuery::Q#initialize
 def AppQuery(...)
   AppQuery::Q.new(...)
 end

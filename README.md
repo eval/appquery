@@ -1,18 +1,13 @@
 # AppQuery - raw SQL 🥦, cooked :stew:
 
 [![Gem Version](https://badge.fury.io/rb/appquery.svg)](https://badge.fury.io/rb/appquery)
+[![API Docs](https://img.shields.io/badge/API_Docs-YARD-blue.svg)](https://eval.github.io/appquery/)
 
-A Rubygem :gem: that makes working with raw SQL (READ) queries in Rails projects more convenient.  
+A Rubygem :gem: that makes working with raw SQL queries in Rails projects convenient.  
 Specifically it provides:
 - **...a dedicated folder for queries**  
   e.g. `app/queries/reports/weekly.sql` is instantiated via `AppQuery["reports/weekly"]`.
-- **...Rails/rspec generators**  
-  ```
-  $ rails generate query reports/weekly
-    create  app/queries/reports/weekly.sql
-    invoke  rspec
-    create    spec/queries/reports/weekly_query_spec.rb
-  ```
+
 - **...ERB templating**  
   Simple ERB templating with helper-functions:
   ```sql
@@ -26,7 +21,9 @@ Specifically it provides:
 - **...positional and named binds**  
   Intuitive binds:
   ```ruby
-  AppQuery(%{select now() - (:interval)::interval as some_date}).select_value(binds: {interval: '1 day'})
+  AppQuery(<<~SQL).select_value(binds: {interval: '1 day'})
+    select now() - (:interval)::interval as some_date
+  SQL
   AppQuery(<<~SQL).select_all(binds: [2.day.ago, Time.now, '5 minutes']).column("series")
     select generate_series($1::timestamp, $2::timestamp, $3::interval) as series
   SQL
@@ -48,8 +45,8 @@ Specifically it provides:
       VALUES(1, 'Some title'),
             (2, 'Another article'))
   CTE
-  ```  
-- **...rspec-helpers**  
+  ```
+- **...rspec generators and helpers**  
   ```ruby
   RSpec.describe "AppQuery reports/weekly", type: :query do
     describe "CTE some_cte" do
@@ -352,223 +349,9 @@ There's some sugar:
   The `binds`-value used when not explicitly provided.  
   E.g. given a query with a where-clause `WHERE published_at > COALESCE($1::timestamp, NOW() - '3 month'::interval)`, when setting `defaults_binds: [nil]` then `select_all` works like `select_all(binds: [nil])`.
 
-## 💎 API Doc 💎
+## API Documentation
 
-### generic
-
-<details>
-  <summary><code>AppQuery(sql) ⇒ AppQuery::Q</code></summary>
-  
-  ### Examples
-  
-  ```ruby
-  AppQuery("some sql")
-  ```
-</details>
-
-### module AppQuery
-
-<details>
-<summary><code>AppQuery[query_name] ⇒ AppQuery::Q</code></summary>
-
-### Examples
-
-```ruby
-AppQuery[:recent_articles]
-AppQuery["export/articles"]
-```
-
-</details>
-
-<details>
-<summary><code>AppQuery.configure {|Configuration| ... } ⇒ void </code></summary>
-
-Configure AppQuery.
-
-### Examples
-
-```ruby
-AppQuery.configure do |cfg|
-  cfg.query_path = "db/queries" # default: "app/queries"
-end
-```
-
-</details>
-
-<details>
-<summary><code>AppQuery.configuration ⇒ AppQuery::Configuration </code></summary>
-
-Get configuration
-
-### Examples
-
-```ruby
-AppQuery.configure do |cfg|
-  cfg.query_path = "db/queries" # default: "app/queries"
-end
-AppQuery.configuration
-```
-
-</details>
-
-### class AppQuery::Q
-
-Instantiate via `AppQuery(sql)` or `AppQuery[:query_file]`.
-
-<details>
-<summary><code>AppQuery::Q#cte_names ⇒ [Array< String >] </code></summary>
-
-Returns names of CTEs in query.
-
-### Examples
-
-```ruby
-AppQuery("select * from articles").cte_names # => []
-AppQuery("with foo as(select 1) select * from foo").cte_names # => ["foo"]
-```
-
-</details>
-
-<details>
-<summary><code>AppQuery::Q#recursive? ⇒ Boolean </code></summary>
-
-Returns whether or not the WITH-clause is recursive or not.
-
-### Examples
-
-```ruby
-AppQuery("select * from articles").recursive? # => false
-AppQuery("with recursive foo as(select 1) select * from foo") # => true
-```
-
-</details>
-
-<details>
-<summary><code>AppQuery::Q#select ⇒ String </code></summary>
-
-Returns select-part of the query. When using CTEs, this will be `<select>` in a query like `with foo as (select 1) <select>`.
-
-### Examples
-
-```ruby
-AppQuery("select * from articles") # => "select * from articles"
-AppQuery("with foo as(select 1) select * from foo") # => "select * from foo"
-```
-
-</details>
-
-#### query execution
-
-<details>
-<summary><code>AppQuery::Q#select_all(select: nil, binds: [], cast: false) ⇒ AppQuery::Result</code></summary>
-
-`select` replaces the existing select. The existing select is wrapped in a CTE named `_`.  
-`binds` array with values for any (positional) placeholder in the query.  
-`cast` boolean or `Hash` indicating whether or not (and how) to cast. E.g. `{"some_column" => ActiveRecord::Type::Date.new}`.
-
-### Examples
-
-```ruby
-# SQLite
-aq = AppQuery(<<~SQL)
-with data(id, title) as (
-  values('1', 'Some title'),
-     ('2', 'Another title')
-)
-select * from data
-where id=?1 or ?1 is null
-SQL
-
-# selecting from the select
-aq.select_all(select: "select * from _ where id > 1").entries #=> [{...}]
-
-# selecting from a CTE
-aq.select_all(select: "select id from data").entries
-
-# casting
-aq.select_all(select: "select id from data", cast: {"id" => ActiveRecord::Type::Integer.new})
-
-# binds
-aq.select_all(binds: ['2'])
-```
-
-</details>
-
-<details>
-<summary><code>AppQuery::Q#select_one(select: nil, binds: [], cast: false) ⇒ AppQuery::Result </code></summary>
-
-First result from `AppQuery::Q#select_all`.
-
-See examples from `AppQuery::Q#select_all`.
-
-</details>
-
-<details>
-<summary><code>AppQuery::Q#select_value(select: nil, binds: [], cast: false) ⇒ AppQuery::Result </code></summary>
-
-First value from `AppQuery::Q#select_one`. Typically for selects like `select count(*) ...`, `select min(article_published_on) ...`.
-
-See examples from `AppQuery::Q#select_all`.
-
-</details>
-
-#### query rewriting
-
-<details>
-<summary><code>AppQuery::Q#with_select(sql) ⇒ AppQuery::Q</code></summary>
-
-Returns new instance with provided select. The existing select is available via CTE `_`.
-
-### Examples
-
-```ruby
-puts AppQuery("select 1").with_select("select 2")
-WITH _ as (
-  select 1
-)
-select 2
-```
-
-</details>
-
-<details>
-<summary><code>AppQuery::Q#prepend_cte(sql) ⇒ AppQuery::Q</code></summary>
-
-Returns new instance with provided CTE.
-
-### Examples
-
-```ruby
-query.prepend_cte("foo as (values(1, 'Some article'))").cte_names # => ["foo", "existing_cte"]
-```
-
-</details>
-
-<details>
-<summary><code>AppQuery::Q#append_cte(sql) ⇒ AppQuery::Q</code></summary>
-
-Returns new instance with provided CTE.
-
-### Examples
-
-```ruby
-query.append_cte("foo as (values(1, 'Some article'))").cte_names # => ["existing_cte", "foo"]
-```
-
-</details>
-
-<details>
-<summary><code>AppQuery::Q#replace_cte(sql) ⇒ AppQuery::Q</code></summary>
-
-Returns new instance with replaced CTE. Raises `ArgumentError` when CTE does not already exist.  
-
-### Examples
-
-```ruby
-query.replace_cte("recent_articles as (select values(1, 'Some article'))")
-```
-
-</details>
+See the [YARD documentation](https://eval.github.io/appquery/) for the full API reference.
 
 ## Compatibility
 

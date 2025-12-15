@@ -21,3 +21,8 @@ gem "activerecord"
 gem "pg"
 
 gem "sqlite3", "~> 2.6"
+
+gem "yard"
+gem "webrick"
+
+gem "redcarpet", "~> 3.6"
