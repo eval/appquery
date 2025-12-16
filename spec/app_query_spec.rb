@@ -1,18 +1,58 @@
 # frozen_string_literal: true
 
+require "tmpdir"
+require "fileutils"
+
 RSpec.describe AppQuery do
-  xdescribe "::[]" do
-    it "resolves file from string or symbol" do
-      described_class[:foo] #=> app/queries/foo.sql
-      described_class["reports/weekly"] #=> app/queries/reports/weekly.sql
+  describe "::[]" do
+    around do |example|
+      Dir.mktmpdir do |dir|
+        @query_path = dir
+        described_class.configure { |cfg| cfg.query_path = dir }
+        example.run
+      end
     end
 
-    it "resolves erb-file if present" do
-      AppQuery[:foo] #=> "/path/to/app/queries/foo.sql.erb"
+    after { described_class.reset_configuration! }
+
+    def write_query(filename, content)
+      path = File.join(@query_path, filename)
+      FileUtils.mkdir_p(File.dirname(path))
+      File.write(path, content)
     end
 
-    it "takes file as is when file-ext" do
-      AppQuery["foo.txt"] #=> "/path/to/app/queries/foo.txt"
+    it "resolves .sql file from string or symbol" do
+      write_query("foo.sql", "SELECT 1")
+
+      expect(described_class[:foo].to_s).to eq("SELECT 1")
+      expect(described_class["foo"].to_s).to eq("SELECT 1")
+    end
+
+    it "resolves .sql.erb file when .sql doesn't exist" do
+      write_query("bar.sql.erb", "SELECT <%= 1 + 1 %>")
+
+      expect(described_class[:bar].to_s).to eq("SELECT <%= 1 + 1 %>")
+    end
+
+    it "raises error when both .sql and .sql.erb exist" do
+      write_query("ambiguous.sql", "SELECT 'sql'")
+      write_query("ambiguous.sql.erb", "SELECT 'erb'")
+
+      expect { described_class[:ambiguous] }.to raise_error(
+        AppQuery::Error, /Ambiguous query name/
+      )
+    end
+
+    it "takes file as is when extension provided" do
+      write_query("custom.txt", "SELECT 'custom'")
+
+      expect(described_class["custom.txt"].to_s).to eq("SELECT 'custom'")
+    end
+
+    it "supports subdirectories" do
+      write_query("reports/weekly.sql", "SELECT 'weekly'")
+
+      expect(described_class["reports/weekly"].to_s).to eq("SELECT 'weekly'")
     end
   end
 

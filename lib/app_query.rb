@@ -72,21 +72,44 @@ module AppQuery
 
   # Loads a query from a file in the configured query path.
   #
+  # When no extension is provided, tries `.sql` first, then `.sql.erb`.
+  # Raises an error if both files exist (ambiguous).
+  #
   # @param query_name [String, Symbol] the query name or path (without extension)
   # @param opts [Hash] additional options passed to {Q#initialize}
   # @return [Q] a new query object loaded from the file
   #
-  # @example Load a simple query
+  # @example Load a .sql file
   #   AppQuery[:invoices]  # loads app/queries/invoices.sql
+  #
+  # @example Load a .sql.erb file (when .sql doesn't exist)
+  #   AppQuery[:dynamic_report]  # loads app/queries/dynamic_report.sql.erb
   #
   # @example Load from a subdirectory
   #   AppQuery["reports/weekly"]  # loads app/queries/reports/weekly.sql
   #
   # @example Load with explicit extension
   #   AppQuery["invoices.sql.erb"]  # loads app/queries/invoices.sql.erb
+  #
+  # @raise [Error] if both `.sql` and `.sql.erb` files exist for the same name
   def self.[](query_name, **opts)
-    filename = File.extname(query_name.to_s).empty? ? "#{query_name}.sql" : query_name.to_s
-    full_path = (Pathname.new(configuration.query_path) / filename).expand_path
+    base = Pathname.new(configuration.query_path) / query_name.to_s
+
+    full_path = if File.extname(query_name.to_s).empty?
+      sql_path = base.sub_ext(".sql").expand_path
+      erb_path = base.sub_ext(".sql.erb").expand_path
+      sql_exists = sql_path.exist?
+      erb_exists = erb_path.exist?
+
+      if sql_exists && erb_exists
+        raise Error, "Ambiguous query name #{query_name.inspect}: both #{sql_path} and #{erb_path} exist"
+      end
+
+      sql_exists ? sql_path : erb_path
+    else
+      base.expand_path
+    end
+
     Q.new(full_path.read, name: "AppQuery #{query_name}", filename: full_path.to_s, **opts)
   end
 
