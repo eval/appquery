@@ -183,6 +183,34 @@ module AppQuery
       end.join(", ")
     end
 
+    # Generates a LIMIT/OFFSET clause for pagination.
+    #
+    # @param page [Integer] the page number (1-indexed)
+    # @param per_page [Integer] the number of items per page
+    # @return [String] the LIMIT/OFFSET clause
+    #
+    # @example Basic pagination
+    #   paginate(page: 1, per_page: 25)
+    #   #=> "LIMIT 25 OFFSET 0"
+    #
+    # @example Second page
+    #   paginate(page: 2, per_page: 25)
+    #   #=> "LIMIT 25 OFFSET 25"
+    #
+    # @example In an ERB template
+    #   SELECT * FROM articles
+    #   ORDER BY created_at DESC
+    #   <%= paginate(page: page, per_page: per_page) %>
+    #
+    # @raise [ArgumentError] if page or per_page is not a positive integer
+    def paginate(page:, per_page:)
+      raise ArgumentError, "page must be a positive integer (got #{page.inspect})" unless page.is_a?(Integer) && page > 0
+      raise ArgumentError, "per_page must be a positive integer (got #{per_page.inspect})" unless per_page.is_a?(Integer) && per_page > 0
+
+      offset = (page - 1) * per_page
+      "LIMIT #{per_page} OFFSET #{offset}"
+    end
+
     private
 
     # Collects a value as a bind parameter and returns the placeholder name.

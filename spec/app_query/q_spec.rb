@@ -137,6 +137,55 @@ RSpec.describe AppQuery::Q do
         SQL
       end
     end
+
+    context "helper: paginate" do
+      it "generates LIMIT/OFFSET for page 1" do
+        expect(render_sql(<<~SQL, {})).to match(/LIMIT 25 OFFSET 0/)
+          SELECT * FROM table
+          <%= paginate(page: 1, per_page: 25) %>
+        SQL
+      end
+
+      it "calculates correct offset for subsequent pages" do
+        expect(render_sql(<<~SQL, {})).to match(/LIMIT 25 OFFSET 25/)
+          SELECT * FROM table
+          <%= paginate(page: 2, per_page: 25) %>
+        SQL
+
+        expect(render_sql(<<~SQL, {})).to match(/LIMIT 10 OFFSET 20/)
+          SELECT * FROM table
+          <%= paginate(page: 3, per_page: 10) %>
+        SQL
+      end
+
+      it "raises for invalid page" do
+        expect {
+          render_sql("<%= paginate(page: 0, per_page: 25) %>", {})
+        }.to raise_error(ArgumentError, /page must be a positive integer/)
+
+        expect {
+          render_sql("<%= paginate(page: -1, per_page: 25) %>", {})
+        }.to raise_error(ArgumentError, /page must be a positive integer/)
+
+        expect {
+          render_sql("<%= paginate(page: '1', per_page: 25) %>", {})
+        }.to raise_error(ArgumentError, /page must be a positive integer/)
+      end
+
+      it "raises for invalid per_page" do
+        expect {
+          render_sql("<%= paginate(page: 1, per_page: 0) %>", {})
+        }.to raise_error(ArgumentError, /per_page must be a positive integer/)
+
+        expect {
+          render_sql("<%= paginate(page: 1, per_page: -10) %>", {})
+        }.to raise_error(ArgumentError, /per_page must be a positive integer/)
+
+        expect {
+          render_sql("<%= paginate(page: 1, per_page: '25') %>", {})
+        }.to raise_error(ArgumentError, /per_page must be a positive integer/)
+      end
+    end
   end
 
   # TODO select_all with sql that needs rendering, raises error
