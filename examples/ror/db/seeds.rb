@@ -41,7 +41,7 @@ def tags(title)
 end
 
 Nokogiri::HTML(URI.open("https://rubyonrails.org/category/releases")).then do |doc|
-  doc.css("body > div > div.blog.common-padding--bottom > div > div > div.blog__post").then do |posts|
+  doc.css("body > div > div.blog.common-padding--bottom > div > div > li.blog__post").then do |posts|
     posts.reverse.each_with_index do |post, ix|
       title = title(post)
       next unless title[/rails/i] # && !title[/recipes|phusion/i]
