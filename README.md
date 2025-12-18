@@ -16,7 +16,7 @@ Specifically it provides:
   <%= order_by(order) %>
   ```
   ```ruby
-  AppQuery["contracts.sql.erb"].render(order: {year: :desc, month: :desc}).select_all
+  AppQuery[:contracts].render(order: {year: :desc, month: :desc}).select_all
   ```
 - **...positional and named binds**  
   Intuitive binds:
