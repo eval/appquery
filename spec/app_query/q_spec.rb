@@ -120,6 +120,14 @@ RSpec.describe AppQuery::Q do
         SQL
       end
 
+      it "accepts a string" do
+        expect(render_sql(<<~SQL, {})).to match(/ORDER BY RANDOM()/)
+          SELECT *
+          FROM table
+          <%= order_by("RANDOM()") %>
+        SQL
+      end
+
       it "requires non-blank hash" do
         expect {
           render_sql(<<~SQL, order: {})
