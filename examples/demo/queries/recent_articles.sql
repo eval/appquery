@@ -1,3 +1,23 @@
+-- Recent Articles Query
+--
+-- Returns recent articles with their associated tags,
+-- ordered by publication date (newest first).
+-- Articles are filtered by publication date and optionally by tag.
+--
+-- Binds:
+--   ::since - (optional) Only include articles published on or after this date.
+--             Defaults to 6 months ago if not provided.
+--   ::tag   - (optional) Filter to articles having a tag matching this pattern
+--             (uses SQL LIKE matching). Pass NULL or omit to include all tags.
+--
+-- Columns returned:
+--   id           - Article ID
+--   title        - Article title
+--   published_on - Publication date
+--   url          - Article URL
+--   tags         - JSON array of tag names
+--   tags_str     - Comma-separated list of tags (sorted alphabetically)
+
 WITH settings(published_since) as (
   values(COALESCE(:since, datetime('now', '-6 months')))
 ),
@@ -24,7 +44,7 @@ SELECT recent_articles.article_id AS id,
        tags,
        group_concat(json_each.value, ',' ORDER BY value ASC) tags_str
 FROM recent_articles
-JOIN tags_by_article USING(article_id),
+LEFT JOIN tags_by_article USING(article_id),
   json_each(tags)
 WHERE EXISTS (
   SELECT 1
