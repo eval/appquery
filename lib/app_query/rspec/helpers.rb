@@ -5,6 +5,10 @@ module AppQuery
         self.class.default_binds
       end
 
+      def default_vars
+        self.class.default_vars
+      end
+
       def expand_select(s)
         s.gsub(":cte", cte_name)
       end
@@ -24,7 +28,7 @@ module AppQuery
       def described_query(select: nil)
         select ||= "SELECT * FROM :cte" if cte_name
         select &&= expand_select(select) if cte_name
-        self.class.described_query.with_select(select)
+        self.class.described_query.render(default_vars).with_select(select)
       end
 
       def cte_name
@@ -70,6 +74,10 @@ module AppQuery
 
         def default_binds
           metadatas.find { _1[:default_binds] }&.[](:default_binds) || []
+        end
+
+        def default_vars
+          metadatas.find { _1[:default_vars] }&.[](:default_vars) || {}
         end
 
         def included(klass)
