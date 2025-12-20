@@ -5,6 +5,70 @@ RSpec.describe AppQuery::Q do
     AppQuery(...)
   end
 
+  describe "#with_sql" do
+    it "returns a new instance with the sql" do
+      aq = app_query("select 1")
+
+      bq = aq.with_sql("select 2")
+      aggregate_failures do
+        expect(aq.to_s).to eql "select 1"
+        expect(bq.to_s).to eql "select 2"
+      end
+    end
+  end
+
+  describe "#with_binds" do
+    it "returns a new instance with binds replaced" do
+      aq = app_query("select :foo, :bar", binds: {foo: 1})
+
+      bq = aq.with_binds(bar: 2)
+      aggregate_failures do
+        expect(aq.binds).to include(bar: nil)        # old stays the same
+        expect(bq.binds).to include(foo: nil, bar: 2)  # new contains this
+      end
+    end
+  end
+
+  describe "#add_binds" do
+    it "returns a new instance with binds merged" do
+      aq = app_query("select :foo, :bar", binds: {foo: 1})
+
+      bq = aq.add_binds(bar: 2)
+      aggregate_failures do
+        expect(aq.binds).to include(bar: nil)        # old stays the same
+        expect(bq.binds).to include(foo: 1, bar: 2)  # new contains this
+      end
+    end
+  end
+
+  describe "#with_select" do
+    it "changes the select" do
+      expect(p(app_query("select 1").with_select("select 2"))).to have_attributes(select: "select 2")
+    end
+
+    describe "sql" do
+      it "appends a CTE _ for the existing query" do
+        aq = app_query("select 1")
+
+        expect(aq.with_select("select 2").to_s).to match(/WITH _ AS/)
+      end
+
+      it "replaces any existing CTE _" do
+        aq = app_query("select 1").with_select("select 2")
+
+        expect(aq.with_select("select 3").to_s).to_not match(/select 2/)
+      end
+    end
+
+    it "yields new instance" do
+      aq = app_query("select 1")
+
+      expect {
+        aq.with_select("select 2")
+      }.to_not change(aq, :select)
+    end
+  end
+
   describe "#render" do
     def render_sql(sql, render_opts)
       app_query(sql).render(render_opts).to_s
@@ -90,7 +154,7 @@ RSpec.describe AppQuery::Q do
         q = app_query(<<~SQL, binds: {id: 42}).render({})
           SELECT * FROM t WHERE id = :id
           UNION ALL
-          <%= values([[1, "title"]]) %>
+          <%= values([[1, "title"]], skip_columns: true) %>
         SQL
 
         expect(q.to_s).to match(/VALUES \(:b1, :b2\)/)
@@ -220,20 +284,6 @@ RSpec.describe AppQuery::Q do
       expect(app_query("")).to have_attributes(cte_names: match([]))
       expect(app_query("with foo as(select 1), bar as(select 2)")).to have_attributes(cte_names: match(%w[foo bar]))
       expect(app_query(%[with "foo" as(select 1), bar as(select 2)])).to have_attributes(cte_names: match(%w["foo" bar]))
-    end
-  end
-
-  describe "#with_select" do
-    it "changes the select" do
-      expect(app_query("select 1").with_select("select 2")).to have_attributes(select: "select 2")
-    end
-
-    it "yields new instance" do
-      aq = app_query("select 1")
-
-      expect {
-        aq.with_select("select 2")
-      }.to_not change(aq, :select)
     end
   end
 
@@ -442,28 +492,6 @@ RSpec.describe AppQuery::Q do
 
     describe "#select_all" do
       describe ":binds" do
-        specify "positional binds" do
-          q = query.with_select(<<~SQL)
-            SELECT * FROM articles
-            WHERE title ILIKE $1
-            ORDER BY id desc
-          SQL
-
-          expect(q.select_one(binds: ["%title"])).to include("title" => "Other title")
-        end
-
-        specify "raises when mixing positional binds with collected named binds" do
-          q = app_query(<<~SQL).render(titles: ["More", "And even more"])
-            SELECT title FROM articles WHERE id = $1
-            UNION ALL
-            <%= values(titles.zip) %>
-          SQL
-
-          expect {
-            q.select_all(binds: [1])
-          }.to raise_error(ArgumentError, /Cannot use positional binds.*Use named binds/)
-        end
-
         specify "named binds" do
           q = query.with_select(<<~SQL)
             SELECT * FROM articles
@@ -474,7 +502,7 @@ RSpec.describe AppQuery::Q do
           expect(q.select_one(binds: {title_ilike: "%title"})).to include("title" => "Other title")
         end
 
-        specify "named binds combined with values helper" do
+        specify "binds combined with values helper" do
           q = app_query(<<~SQL).render(titles: ["More", "And even more"])
             WITH articles(id, title) AS (
               VALUES (1, 'Original')

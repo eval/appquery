@@ -209,7 +209,7 @@ module AppQuery
     # @return [String] the SQL string
     # @return [Array, Hash] bind parameters
     # @return [Boolean, Hash, Array] casting configuration
-    attr_reader :name, :sql, :binds, :cast
+    attr_reader :sql, :name, :filename, :binds, :cast
 
     # Creates a new query object.
     #
@@ -224,28 +224,37 @@ module AppQuery
     #
     # @example With ERB and binds
     #   Q.new("SELECT * FROM users WHERE id = :id", binds: {id: 1})
-    def initialize(sql, name: nil, filename: nil, binds: [], cast: true)
+    def initialize(sql, name: nil, filename: nil, binds: {}, cast: true)
       @sql = sql
       @name = name
       @filename = filename
       @binds = binds
       @cast = cast
+      @binds = binds_with_defaults(sql, binds)
+    end
+
+    def to_arel
+      if binds.presence
+        Arel::Nodes::BoundSqlLiteral.new sql, [], binds
+      else
+        # TODO: add retryable? available from >=7.1
+        Arel::Nodes::SqlLiteral.new(sql)
+      end
+    end
+
+    private def binds_with_defaults(sql, binds)
+      if (named_binds = sql.scan(/:(?<!::)([a-zA-Z]\w*)/).flatten.map(&:to_sym).uniq.presence)
+        named_binds.zip(Array.new(named_binds.count)).to_h.merge(binds.to_h)
+      else
+        {}
+      end
     end
 
     # @private
-    def deep_dup
-      super.send(:reset!)
+    def deep_dup(sql: self.sql, name: self.name, filename: self.filename, binds: self.binds, cast: self.cast)
+      self.class.new(sql, name:, filename:, binds:, cast:)
     end
     private :deep_dup
-
-    # @private
-    def reset!
-      (instance_variables - %i[@sql @filename @name @binds @cast]).each do
-        instance_variable_set(_1, nil)
-      end
-      self
-    end
-    private :reset!
 
     # @!group Rendering
 
@@ -290,12 +299,7 @@ module AppQuery
       sql = to_erb.result(helper.get_binding)
       collected = helper.collected_binds
 
-      with_sql(sql).tap do |q|
-        # Merge collected binds with existing binds (convert array to hash if needed)
-        existing = @binds.is_a?(Hash) ? @binds : {}
-        new_binds = existing.merge(collected)
-        q.instance_variable_set(:@binds, new_binds) if new_binds.any?
-      end
+      with_sql(sql).add_binds(**collected)
     end
 
     def to_erb
@@ -329,15 +333,12 @@ module AppQuery
 
     # Executes the query and returns all matching rows.
     #
-    # @param binds [Array, Hash, nil] bind parameters (positional or named)
+    # @param binds [Hash, nil] bind parameters to add
     # @param select [String, nil] override the SELECT clause
     # @param cast [Boolean, Hash, Array] type casting configuration
     # @return [Result] the query results with optional type casting
     #
-    # @example Simple query with positional binds
-    #   AppQuery("SELECT * FROM users WHERE id = $1").select_all(binds: [1])
-    #
-    # @example Named binds
+    # @example (Named) binds
     #   AppQuery("SELECT * FROM users WHERE id = :id").select_all(binds: {id: 1})
     #
     # @example With type casting
@@ -348,37 +349,17 @@ module AppQuery
     #   AppQuery("SELECT * FROM users").select_all(select: "COUNT(*)")
     #
     # @raise [UnrenderedQueryError] if the query contains unrendered ERB
-    # @raise [ArgumentError] if mixing positional binds with collected named binds
     #
     # TODO: have aliases for common casts: select_all(cast: {"today" => :date})
     def select_all(binds: nil, select: nil, cast: self.cast)
-      with_select(select).render({}).then do |aq|
-        # Support both positional (array) and named (hash) binds
-        if binds.is_a?(Array)
-          if @binds.is_a?(Hash) && @binds.any?
-            raise ArgumentError, "Cannot use positional binds (Array) when query has collected named binds from values()/bind() helpers. Use named binds (Hash) instead."
-          end
-          # Positional binds using $1, $2, etc.
-          ActiveRecord::Base.connection.select_all(aq.to_s, name, binds).then do |result|
-            Result.from_ar_result(result, cast)
-          end
+      add_binds(**binds).with_select(select).render({}).then do |aq|
+        sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
+          aq.to_arel
         else
-          # Named binds - merge collected binds with explicitly passed binds
-          merged_binds = (@binds.is_a?(Hash) ? @binds : {}).merge(binds || {})
-          if merged_binds.any?
-            sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
-              Arel.sql(aq.to_s, **merged_binds)
-            else
-              ActiveRecord::Base.sanitize_sql_array([aq.to_s, **merged_binds])
-            end
-            ActiveRecord::Base.connection.select_all(sql, name).then do |result|
-              Result.from_ar_result(result, cast)
-            end
-          else
-            ActiveRecord::Base.connection.select_all(aq.to_s, name).then do |result|
-              Result.from_ar_result(result, cast)
-            end
-          end
+          ActiveRecord::Base.sanitize_sql_array([aq.to_s, aq.binds])
+        end
+        ActiveRecord::Base.connection.select_all(sql, aq.name).then do |result|
+          Result.from_ar_result(result, cast)
         end
       end
     rescue NameError => e
@@ -389,13 +370,13 @@ module AppQuery
 
     # Executes the query and returns the first row.
     #
-    # @param binds [Array, Hash, nil] bind parameters (positional or named)
+    # @param binds [Hash, nil] bind parameters to add
     # @param select [String, nil] override the SELECT clause
     # @param cast [Boolean, Hash, Array] type casting configuration
     # @return [Hash, nil] the first row as a hash, or nil if no results
     #
     # @example
-    #   AppQuery("SELECT * FROM users WHERE id = $1").select_one(binds: [1])
+    #   AppQuery("SELECT * FROM users WHERE id = :id").select_one(binds: {id: 1})
     #   # => {"id" => 1, "name" => "Alice"}
     #
     # @see #select_all
@@ -421,7 +402,7 @@ module AppQuery
 
     # Executes an INSERT query.
     #
-    # @param binds [Array, Hash] bind parameters for the query
+    # @param binds [Hash] bind parameters for the query
     # @param returning [String, nil] columns to return (Rails 7.1+ only)
     # @return [Integer, Object] the inserted ID or returning value
     #
@@ -442,30 +423,22 @@ module AppQuery
     #
     # @raise [UnrenderedQueryError] if the query contains unrendered ERB
     # @raise [ArgumentError] if returning is used with Rails < 7.1
-    def insert(binds: [], returning: nil)
+    def insert(binds: nil, returning: nil)
       # ActiveRecord::Base.connection.insert(sql, name, _pk = nil, _id_value = nil, _sequence_name = nil, binds, returning: nil)
       if returning && ActiveRecord::VERSION::STRING.to_f < 7.1
         raise ArgumentError, "The 'returning' option requires Rails 7.1+. Current version: #{ActiveRecord::VERSION::STRING}"
       end
 
-      binds = binds.presence || @binds
-      render({}).then do |aq|
-        if binds.is_a?(Hash)
-          sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
-            Arel.sql(aq.to_s, **binds)
-          else
-            ActiveRecord::Base.sanitize_sql_array([aq.to_s, **binds])
-          end
-          if ActiveRecord::VERSION::STRING.to_f >= 7.1
-            ActiveRecord::Base.connection.insert(sql, name, returning:)
-          else
-            ActiveRecord::Base.connection.insert(sql, name)
-          end
-        elsif ActiveRecord::VERSION::STRING.to_f >= 7.1
-          # pk is the less flexible returning
-          ActiveRecord::Base.connection.insert(aq.to_s, name, _pk = nil, _id_value = nil, _sequence_name = nil, binds, returning:)
+      with_binds(**binds).render({}).then do |aq|
+        sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
+          aq.to_arel
         else
-          ActiveRecord::Base.connection.insert(aq.to_s, name, _pk = nil, _id_value = nil, _sequence_name = nil, binds)
+          ActiveRecord::Base.sanitize_sql_array([aq.to_s, **aq.binds])
+        end
+        if ActiveRecord::VERSION::STRING.to_f >= 7.1
+          ActiveRecord::Base.connection.insert(sql, name, returning:)
+        else
+          ActiveRecord::Base.connection.insert(sql, name)
         end
       end
     rescue NameError => e
@@ -476,7 +449,7 @@ module AppQuery
 
     # Executes an UPDATE query.
     #
-    # @param binds [Array, Hash] bind parameters for the query
+    # @param binds [Hash] bind parameters for the query
     # @return [Integer] the number of affected rows
     #
     # @example With named binds
@@ -488,19 +461,14 @@ module AppQuery
     #     .update(binds: ["New Title", 1])
     #
     # @raise [UnrenderedQueryError] if the query contains unrendered ERB
-    def update(binds: [])
-      binds = binds.presence || @binds
-      render({}).then do |aq|
-        if binds.is_a?(Hash)
-          sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
-            Arel.sql(aq.to_s, **binds)
-          else
-            ActiveRecord::Base.sanitize_sql_array([aq.to_s, **binds])
-          end
-          ActiveRecord::Base.connection.update(sql, name)
+    def update(binds: nil)
+      with_binds(**binds).render({}).then do |aq|
+        sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
+          aq.to_arel
         else
-          ActiveRecord::Base.connection.update(aq.to_s, name, binds)
+          ActiveRecord::Base.sanitize_sql_array([aq.to_s, **aq.binds])
         end
+        ActiveRecord::Base.connection.update(sql, name)
       end
     rescue NameError => e
       raise e unless e.instance_of?(NameError)
@@ -519,19 +487,14 @@ module AppQuery
     #   AppQuery("DELETE FROM videos WHERE id = $1").delete(binds: [1])
     #
     # @raise [UnrenderedQueryError] if the query contains unrendered ERB
-    def delete(binds: [])
-      binds = binds.presence || @binds
-      render({}).then do |aq|
-        if binds.is_a?(Hash)
-          sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
-            Arel.sql(aq.to_s, **binds)
-          else
-            ActiveRecord::Base.sanitize_sql_array([aq.to_s, **binds])
-          end
-          ActiveRecord::Base.connection.delete(sql, name)
+    def delete(binds: nil)
+      with_binds(**binds).render({}).then do |aq|
+        sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
+          aq.to_arel
         else
-          ActiveRecord::Base.connection.delete(aq.to_s, name, binds)
+          ActiveRecord::Base.sanitize_sql_array([aq.to_s, **aq.binds])
         end
+        ActiveRecord::Base.connection.delete(sql, name)
       end
     rescue NameError => e
       raise e unless e.instance_of?(NameError)
@@ -570,16 +533,30 @@ module AppQuery
 
     # Returns a new query with different bind parameters.
     #
-    # @param binds [Array, Hash] the new bind parameters
-    # @return [Q] a new query object with the specified binds
+    # @param binds [Hash] the bind parameters
+    # @return [Q] a new query object with the binds replaced
     #
     # @example
-    #   query = AppQuery("SELECT * FROM users WHERE id = :id")
-    #   query.with_binds(id: 1).select_one
-    def with_binds(binds)
-      deep_dup.tap do
-        _1.instance_variable_set(:@binds, binds)
-      end
+    #   query = AppQuery("SELECT :foo, :bar", binds: {foo: 1})
+    #   query.with_binds(bar: 2).binds
+    #   # => {foo: nil, bar: 2}
+    def with_binds(**binds)
+      deep_dup(binds:)
+    end
+    alias_method :replace_binds, :with_binds
+
+
+    # Returns a new query with binds added.
+    #
+    # @param binds [Hash] the bind parameters to add
+    # @return [Q] a new query object with the added binds
+    #
+    # @example
+    #   query = AppQuery("SELECT :foo, :bar", binds: {foo: 1})
+    #   query.add_binds(bar: 2).binds
+    #   # => {foo: 1, bar: 2}
+    def add_binds(**binds)
+      deep_dup(binds: self.binds.merge(binds))
     end
 
     # Returns a new query with different cast settings.
@@ -591,9 +568,7 @@ module AppQuery
     #   query = AppQuery("SELECT created_at FROM users")
     #   query.with_cast(false).select_all  # disable casting
     def with_cast(cast)
-      deep_dup.tap do
-        _1.instance_variable_set(:@cast, cast)
-      end
+      deep_dup(cast:)
     end
 
     # Returns a new query with different SQL.
@@ -601,9 +576,7 @@ module AppQuery
     # @param sql [String] the new SQL string
     # @return [Q] a new query object with the specified SQL
     def with_sql(sql)
-      deep_dup.tap do
-        _1.instance_variable_set(:@sql, sql)
-      end
+      deep_dup(sql:)
     end
 
     # Returns a new query with a modified SELECT statement.
@@ -625,7 +598,7 @@ module AppQuery
           acc << v
         end.join)
       else
-        append_cte("_ as (\n  #{select}\n)").with_select(sql)
+        append_cte("_ AS (\n  #{select}\n)").with_select(sql)
       end
     end
 

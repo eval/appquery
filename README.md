@@ -18,14 +18,11 @@ Specifically it provides:
   ```ruby
   AppQuery[:contracts].render(order: {year: :desc, month: :desc}).select_all
   ```
-- **...positional and named binds**  
-  Intuitive binds:
+- **...named binds**  
   ```ruby
-  AppQuery(<<~SQL).select_value(binds: {interval: '1 day'})
-    select now() - (:interval)::interval as some_date
-  SQL
-  AppQuery(<<~SQL).select_all(binds: [2.day.ago, Time.now, '5 minutes']).column("series")
-    select generate_series($1::timestamp, $2::timestamp, $3::interval) as series
+  # all binds have value nil by default
+  AppQuery(<<~SQL).select_all(binds: {ts1: 2.day.ago, ts2: Time.now}).column("series")
+    SELECT generate_series(:ts1::timestamp, :ts2::timestamp, COALESCE(:interval, '5 minutes')::interval) AS series
   SQL
   ```
 - **...casting**  
@@ -104,10 +101,15 @@ The prompt indicates what adapter the example uses:
 => "2025-05-10"
 
 # binds
-# positional binds
-[postgresql]> AppQuery(%{select now() - ($1)::interval as date}).select_value(binds: ['2 days'])
-# named binds
-[postgresql]> AppQuery(%{select now() - (:interval)::interval as date}).select_value(binds: {interval: '2 days'})
+## named binds
+[per-column-castsostgresql]> AppQuery(%{select now() - (:interval)::interval as date}).select_value(binds: {interval: '2 days'})
+
+## binds get initialized with nil by default - so defaults can be added in SQL:
+[postgresql]> AppQuery(<<~SQL).select_all(binds: {ts1: 2.day.ago, ts2: Time.now}).column("series")
+  SELECT
+    generate_series(:ts1::timestamp, COALESCE(:ts2, :ts2::timestamp, COALESCE(:interval, '5 minutes')::interval)
+    AS series
+SQL
 
 # casting
 [postgresql]> AppQuery(%{select date('now') as today}).select_all(cast: true).to_a
@@ -174,15 +176,15 @@ rails g query recent_articles
 Have some SQL (for SQLite, in this example):
 ```sql
 -- app/queries/recent_articles.sql
-WITH settings(default_min_published_on) as (
-  values(datetime('now', '-6 months'))
+WITH settings(min_published_on) as (
+  values(COALESCE(:since, datetime('now', '-6 months')))
 ),
 
 recent_articles(article_id, article_title, article_published_on, article_url) AS (
   SELECT id, title, published_on, url
   FROM articles
   RIGHT JOIN settings
-  WHERE published_on > COALESCE(?1, settings.default_min_published_on)
+  WHERE published_on > settings.min_published_on
 ),
 
 tags_by_article(article_id, tags) AS (
@@ -201,7 +203,7 @@ JOIN tags_by_article USING(article_id),
 WHERE EXISTS (
   SELECT 1
   FROM json_each(tags)
-  WHERE json_each.value LIKE ?2 OR ?2 IS NULL
+  WHERE json_each.value LIKE :tag OR :tag IS NULL
 )
 GROUP BY recent_articles.article_id
 ORDER BY recent_articles.article_published_on
@@ -248,12 +250,11 @@ AppQuery[:recent_articles].select_all.entries
 ...
 ]
 
-# we can provide a different cut off date via binds^1:
-AppQuery[:recent_articles].select_all(binds: [1.month.ago]).entries
+# we can provide a different cut off date via binds:
+AppQuery[:recent_articles].select_all(binds: {since: 1.month.ago}).entries
 
-1) note that SQLite can deal with unbound parameters, i.e. when no binds are provided it assumes null for
-  $1 and $2 (which our query can deal with).
-  For Postgres you would always need to provide 2 values, e.g. `binds: [nil, nil]`.
+# NOTE: by default the binds get initialized with nil, e.g. for this example {since: nil, tag: nil}
+# This prevents you from having to provide all binds every time. Default values are put in the SQL (via COALESCE).
 ```
 
 We can also dig deeper by query-ing the result, i.e. the CTE `_`:
@@ -285,7 +286,7 @@ AppQuery[:recent_articles].select_all(select: "SELECT * FROM tags_by_article")
 types = {"tags" => ActiveRecord::Type::Json.new}
 AppQuery[:recent_articles].select_all(select: "SELECT * FROM tags_by_article", cast: types)
 
-1) PostgreSQL, unlike SQLite, has json and array types. Just casting suffices:
+1) unlike SQLite, PostgreSQL has json and array types. Just casting suffices:
 AppQuery("select json_build_object('a', 1, 'b', true)").select_one(cast: true)
 # => {"json_build_object"=>{"a"=>1, "b"=>true}}
 ```
@@ -294,7 +295,7 @@ Using the methods `(prepend|append|replace)_cte`, we can rewrite the query beyon
 
 ```ruby
 AppQuery[:recent_articles].replace_cte(<<~SQL).select_all.entries
-settings(default_min_published_on) as (
+settings(min_published_on) as (
   values(datetime('now', '-12 months'))
 )
 SQL
@@ -306,10 +307,10 @@ You could even mock existing tables (using PostgreSQL):
 sample_articles = [{id: 1, title: "Some title", published_on: 3.months.ago},
                    {id: 2, title: "Another title", published_on: 1.months.ago}]
 # show the provided cutoff date works
-AppQuery[:recent_articles].prepend_cte(<<-CTE).select_all(binds: [6.weeks.ago, nil, JSON[sample_articles]).entries
-  articles AS (
-    SELECT * from json_to_recordset($3) AS x(id int, title text, published_on timestamp)
-  )
+AppQuery[:recent_articles].prepend_cte(<<-CTE).select_all(binds: {since: 6.weeks.ago, articles: JSON[sample_articles]}).entries
+articles AS (
+  SELECT * from json_to_recordset(:articles) AS x(id int, title text, published_on timestamp)
+)
 CTE
 ```
 
@@ -347,7 +348,6 @@ There's some sugar:
   When doing `select_all`, you can rewrite the `SELECT` of the query by passing `select`. There's no need to use the full name of the CTE as the spec-description contains the name (i.e. "articles" in "CTE articles").
 - default_binds  
   The `binds`-value used when not explicitly provided.  
-  E.g. given a query with a where-clause `WHERE published_at > COALESCE($1::timestamp, NOW() - '3 month'::interval)`, when setting `defaults_binds: [nil]` then `select_all` works like `select_all(binds: [nil])`.
 
 ## API Documentation
 
