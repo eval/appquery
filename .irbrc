@@ -17,4 +17,13 @@ IRB.conf[:PROMPT][:APPQUERY] = {
   PROMPT_C: "#{db_indicator}appquery* ",
   RETURN: "=> %s\n"
 }
+
+# copy from history easier as prompt is not repeated across lines
+IRB.conf[:PROMPT][:CLEAN] = {
+  PROMPT_I: ">> ",
+  PROMPT_S: "   ",      # same width as ">> "
+  PROMPT_C: "   ",
+  PROMPT_N: "   ",
+  RETURN: "=> %s\n"
+}
 IRB.conf[:PROMPT_MODE] = :APPQUERY
