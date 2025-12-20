@@ -545,7 +545,6 @@ module AppQuery
     end
     alias_method :replace_binds, :with_binds
 
-
     # Returns a new query with binds added.
     #
     # @param binds [Hash] the bind parameters to add
