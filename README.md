@@ -7,13 +7,24 @@ A Rubygem :gem: that makes working with raw SQL queries in Rails projects conven
 Specifically it provides:
 - **...a dedicated folder for queries**  
   e.g. `app/queries/reports/weekly.sql` is instantiated via `AppQuery["reports/weekly"]`.
-
+- **...easily execute select's**
+  ```ruby
+  AppQuery["reports/weekly"].select_all.entries
+  #=> [{id: 1, title: "Some report", ...}, ...]
+  # also: select_one, select_value
+  ```
+- **...querying a query**
+  ```ruby
+  AppQuery["reports/weekly"].select_value(select: "select count(*) from _")
+  #=> 42
+  ```
 - **...ERB templating**  
   Simple ERB templating with helper-functions:
   ```sql
   -- app/queries/contracts.sql.erb
   SELECT * FROM contracts
   <%= order_by(order) %>
+  # also: values, paginate, quote etc.
   ```
   ```ruby
   AppQuery[:contracts].render(order: {year: :desc, month: :desc}).select_all
@@ -33,8 +44,6 @@ Specifically it provides:
   AppQuery(%{select '{"a": 1}' as data}).select_value(cast:)
   ```
 - **...helpers to rewrite a query for introspection during development and testing**  
-  See what a CTE yields: `query.select_all(select: "SELECT * FROM some_cte")`.  
-  Query the end result: `query.select_one(select: "SELECT COUNT(*) FROM _ WHERE ...")`.  
   Append/prepend CTEs:
   ```ruby
   query.prepend_cte(<<~CTE)
@@ -102,9 +111,9 @@ The prompt indicates what adapter the example uses:
 
 # binds
 ## named binds
-[per-column-castsostgresql]> AppQuery(%{select now() - (:interval)::interval as date}).select_value(binds: {interval: '2 days'})
+[postgresql]> AppQuery(%{select now() - (:interval)::interval as date}).select_value(binds: {interval: '2 days'})
 
-## binds get initialized with nil by default - so defaults can be added in SQL:
+## not all binds need to be provided (ie they are nil by default) - so defaults can be added in SQL:
 [postgresql]> AppQuery(<<~SQL).select_all(binds: {ts1: 2.day.ago, ts2: Time.now}).column("series")
   SELECT
     generate_series(:ts1::timestamp, COALESCE(:ts2, :ts2::timestamp, COALESCE(:interval, '5 minutes')::interval)
@@ -112,8 +121,12 @@ The prompt indicates what adapter the example uses:
 SQL
 
 # casting
-[postgresql]> AppQuery(%{select date('now') as today}).select_all(cast: true).to_a
-=> [{"today" => Sat, 10 May 2025}]
+## Cast values are used by default:
+[postgresql]> AppQuery(%{select date('now')}).select_first
+=> {"today" => Sat, 10 May 2025}
+## compare ActiveRecord
+[postgresql]> ActiveRecord::Base.connection.select_first(%{select date('now') as today})
+=> {"today" => "2025-12-20"}
 
 ## SQLite doesn't have a notion of dates or timestamp's so casting won't do anything:
 [sqlite]> AppQuery(%{select date('now') as today}).select_one(cast: true)
@@ -166,7 +179,7 @@ SQL
 ### ...in a Rails project
 
 > [!NOTE]
-> The included [example Rails app](./examples/ror) contains all data and queries described below.
+> The included [example Rails app](./examples/demo) contains all data and queries described below.
 
 Create a query:  
 ```bash
