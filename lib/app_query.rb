@@ -351,7 +351,7 @@ module AppQuery
     # @raise [UnrenderedQueryError] if the query contains unrendered ERB
     #
     # TODO: have aliases for common casts: select_all(cast: {"today" => :date})
-    def select_all(binds: nil, select: nil, cast: self.cast)
+    def select_all(binds: {}, select: nil, cast: self.cast)
       add_binds(**binds).with_select(select).render({}).then do |aq|
         sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
           aq.to_arel
@@ -380,7 +380,7 @@ module AppQuery
     #   # => {"id" => 1, "name" => "Alice"}
     #
     # @see #select_all
-    def select_one(binds: nil, select: nil, cast: self.cast)
+    def select_one(binds: {}, select: nil, cast: self.cast)
       select_all(binds:, select:, cast:).first
     end
 
@@ -396,7 +396,7 @@ module AppQuery
     #   # => 42
     #
     # @see #select_one
-    def select_value(binds: nil, select: nil, cast: self.cast)
+    def select_value(binds: {}, select: nil, cast: self.cast)
       select_one(binds:, select:, cast:)&.values&.first
     end
 
@@ -423,7 +423,7 @@ module AppQuery
     #
     # @raise [UnrenderedQueryError] if the query contains unrendered ERB
     # @raise [ArgumentError] if returning is used with Rails < 7.1
-    def insert(binds: nil, returning: nil)
+    def insert(binds: {}, returning: nil)
       # ActiveRecord::Base.connection.insert(sql, name, _pk = nil, _id_value = nil, _sequence_name = nil, binds, returning: nil)
       if returning && ActiveRecord::VERSION::STRING.to_f < 7.1
         raise ArgumentError, "The 'returning' option requires Rails 7.1+. Current version: #{ActiveRecord::VERSION::STRING}"
@@ -461,7 +461,7 @@ module AppQuery
     #     .update(binds: ["New Title", 1])
     #
     # @raise [UnrenderedQueryError] if the query contains unrendered ERB
-    def update(binds: nil)
+    def update(binds: {})
       with_binds(**binds).render({}).then do |aq|
         sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
           aq.to_arel
@@ -487,7 +487,7 @@ module AppQuery
     #   AppQuery("DELETE FROM videos WHERE id = $1").delete(binds: [1])
     #
     # @raise [UnrenderedQueryError] if the query contains unrendered ERB
-    def delete(binds: nil)
+    def delete(binds: {})
       with_binds(**binds).render({}).then do |aq|
         sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
           aq.to_arel
