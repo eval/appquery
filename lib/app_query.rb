@@ -216,7 +216,7 @@ module AppQuery
     # @param sql [String] the SQL query string (may contain ERB)
     # @param name [String, nil] optional name for logging
     # @param filename [String, nil] optional filename for ERB error reporting
-    # @param binds [Array, Hash] bind parameters for the query
+    # @param binds [Hash, nil] bind parameters for the query
     # @param cast [Boolean, Hash, Array] type casting configuration
     #
     # @example Simple query
@@ -389,7 +389,7 @@ module AppQuery
 
     # Executes the query and returns the first value of the first row.
     #
-    # @param binds [Array, Hash, nil] bind parameters (positional or named)
+    # @param binds [Hash, nil] named bind parameters
     # @param select [String, nil] override the SELECT clause
     # @param cast [Boolean, Hash, Array] type casting configuration
     # @return [Object, nil] the first value, or nil if no results
@@ -425,7 +425,7 @@ module AppQuery
 
     # Executes an INSERT query.
     #
-    # @param binds [Hash] bind parameters for the query
+    # @param binds [Hash, nil] bind parameters for the query
     # @param returning [String, nil] columns to return (Rails 7.1+ only)
     # @return [Integer, Object] the inserted ID or returning value
     #
@@ -472,7 +472,7 @@ module AppQuery
 
     # Executes an UPDATE query.
     #
-    # @param binds [Hash] bind parameters for the query
+    # @param binds [Hash, nil] bind parameters for the query
     # @return [Integer] the number of affected rows
     #
     # @example With named binds
@@ -500,7 +500,7 @@ module AppQuery
 
     # Executes a DELETE query.
     #
-    # @param binds [Array, Hash] bind parameters for the query
+    # @param binds [Hash, nil] bind parameters for the query
     # @return [Integer] the number of deleted rows
     #
     # @example With named binds
@@ -556,7 +556,7 @@ module AppQuery
 
     # Returns a new query with different bind parameters.
     #
-    # @param binds [Hash] the bind parameters
+    # @param binds [Hash, nil] the bind parameters
     # @return [Q] a new query object with the binds replaced
     #
     # @example
@@ -570,7 +570,7 @@ module AppQuery
 
     # Returns a new query with binds added.
     #
-    # @param binds [Hash] the bind parameters to add
+    # @param binds [Hash, nil] the bind parameters to add
     # @return [Q] a new query object with the added binds
     #
     # @example

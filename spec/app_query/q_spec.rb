@@ -6,15 +6,26 @@ RSpec.describe AppQuery::Q do
   end
 
   describe "#count", :db do
-    # without select
-    # with select
-    specify "without select" do
-      q = app_query(<<~SQL)
-        with articles(id,title) as(values(1,'First'), (2, 'Second'))
+    def articles
+      app_query(<<~SQL)
+        with articles(id,title,published) as(
+          values(1, 'First', true),
+                (2, 'Second', false),
+                (3, 'Third', true))
         select * from articles
       SQL
+    end
 
-      expect(q.count).to eq 2
+    specify "without select" do
+      expect(articles.count).to eq 3
+    end
+
+    specify "with select and binds" do
+      expect(articles.count(<<~SQL, binds: {published: true})).to eq 2
+        SELECT *
+        FROM :_
+        WHERE published = :published
+      SQL
     end
   end
 
@@ -117,9 +128,7 @@ RSpec.describe AppQuery::Q do
       }.to raise_error(AppQuery::UnrenderedQueryError, /Query is ERB/)
     end
 
-    context "helper: quote" do
-      before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
-
+    context "helper: quote", :db do
       it "quotes" do
         expect(render_sql(<<~SQL, {})).to match(/VALUES\('Let''s learn SQL!'/)
           INSERT INTO videos (title)
@@ -128,9 +137,7 @@ RSpec.describe AppQuery::Q do
       end
     end
 
-    context "helper: values" do
-      before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
-
+    context "helper: values", :db do
       it "generates named placeholders for an array" do
         q = app_query(<<~SQL).render({})
           INSERT INTO videos (id, title)
@@ -180,9 +187,7 @@ RSpec.describe AppQuery::Q do
       end
     end
 
-    context "helper: bind" do
-      before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
-
+    context "helper: bind", :db do
       it "generates a named placeholder and collects the bind" do
         q = app_query(<<~SQL).render({})
           SELECT * FROM videos WHERE title = <%= bind("Some title") %>
@@ -370,9 +375,7 @@ RSpec.describe AppQuery::Q do
     end
   end
 
-  describe "query execution" do
-    before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
-
+  describe "query execution", :db do
     def query
       app_query(<<~SQL)
         with articles(id,title,published_on) as (

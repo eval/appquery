@@ -12,4 +12,8 @@ RSpec.configure do |config|
   config.expect_with :rspec do |c|
     c.syntax = :expect
   end
+
+  config.before(:context, :db) do
+    ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"])
+  end
 end
