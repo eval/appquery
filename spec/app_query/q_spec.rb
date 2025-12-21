@@ -527,6 +527,14 @@ RSpec.describe AppQuery::Q do
           expect(query.select_all("select title from articles")).to \
             include(a_hash_including("title" => "Some title"))
         end
+
+        specify "handles binds in select" do
+          expect(query.select_all(<<~SQL, binds: {ids: [1]})).to include(a_hash_including("title" => "Some title"))
+            SELECT title
+            FROM articles
+            WHERE id = ANY(array[:ids]::int[])
+          SQL
+        end
       end
 
       describe "cast" do
