@@ -14,6 +14,14 @@
 
 ### ✨ Features
 
+- 🍾 **Add paginate ERB-helper**
+  ```ruby
+  SELECT * FROM articles
+    <%= paginate(page: 1, per_page: 15) %>
+  # SELECT * FROM articles LIMIT 15 OFFSET 0
+  ```
+- 🧰 **Resolve query without extension**  
+  `AppQuery[:weekly_sales]` loads `weekly_sales.sql` or `weekly_sales.sql.erb`.
 - 🔗 **Nested result queries** via `with_select` — chain transformations using `:_` placeholder to reference the previous result
   ```ruby
   active_users = AppQuery("SELECT * FROM users").with_select("SELECT * FROM :_ WHERE active")
