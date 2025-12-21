@@ -333,8 +333,8 @@ module AppQuery
 
     # Executes the query and returns all matching rows.
     #
-    # @param binds [Hash, nil] bind parameters to add
     # @param select [String, nil] override the SELECT clause
+    # @param binds [Hash, nil] bind parameters to add
     # @param cast [Boolean, Hash, Array] type casting configuration
     # @return [Result] the query results with optional type casting
     #
@@ -351,7 +351,8 @@ module AppQuery
     # @raise [UnrenderedQueryError] if the query contains unrendered ERB
     #
     # TODO: have aliases for common casts: select_all(cast: {"today" => :date})
-    def select_all(binds: {}, select: nil, cast: self.cast)
+    def select_all(s = nil, binds: {}, select: nil, cast: self.cast)
+      select ||= s
       add_binds(**binds).with_select(select).render({}).then do |aq|
         sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
           aq.to_arel
@@ -380,8 +381,8 @@ module AppQuery
     #   # => {"id" => 1, "name" => "Alice"}
     #
     # @see #select_all
-    def select_one(binds: {}, select: nil, cast: self.cast)
-      select_all(binds:, select:, cast:).first
+    def select_one(s = nil, binds: {}, select: nil, cast: self.cast)
+      select_all(s, binds:, select:, cast:).first
     end
 
     # Executes the query and returns the first value of the first row.
@@ -396,8 +397,8 @@ module AppQuery
     #   # => 42
     #
     # @see #select_one
-    def select_value(binds: {}, select: nil, cast: self.cast)
-      select_one(binds:, select:, cast:)&.values&.first
+    def select_value(s = nil, binds: {}, select: nil, cast: self.cast)
+      select_one(s, binds:, select:, cast:)&.values&.first
     end
 
     # Executes an INSERT query.

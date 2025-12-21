@@ -522,6 +522,11 @@ RSpec.describe AppQuery::Q do
           expect(query.select_all(select: "select title from articles")).to \
             include(a_hash_including("title" => "Some title"))
         end
+
+        specify "accepted as first argument as well" do
+          expect(query.select_all("select title from articles")).to \
+            include(a_hash_including("title" => "Some title"))
+        end
       end
 
       describe "cast" do
