@@ -95,8 +95,9 @@ module AppQuery
       if eos?
         emit_token "COMMA", v: ","
         emit_token "WHITESPACE", v: "\n"
+      elsif match?(/\s/)
+        push_return :lex_prepend_cte, :lex_whitespace
       else
-        # emit_token "WHITESPACE", v: " "
         push_return :lex_prepend_cte, :lex_recursive_cte
       end
     end
