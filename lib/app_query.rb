@@ -250,11 +250,9 @@ module AppQuery
       end
     end
 
-    # @private
-    def deep_dup(sql: self.sql, name: self.name, filename: self.filename, binds: self.binds, cast: self.cast)
+    private def deep_dup(sql: self.sql, name: self.name, filename: self.filename, binds: self.binds, cast: self.cast)
       self.class.new(sql, name:, filename:, binds:, cast:)
     end
-    private :deep_dup
 
     # @!group Rendering
 
