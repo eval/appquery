@@ -224,14 +224,17 @@ module AppQuery
     #
     # @example With ERB and binds
     #   Q.new("SELECT * FROM users WHERE id = :id", binds: {id: 1})
-    def initialize(sql, name: nil, filename: nil, binds: {}, cast: true)
+    def initialize(sql, name: nil, filename: nil, binds: {}, cast: true, cte_depth: 0)
       @sql = sql
       @name = name
       @filename = filename
       @binds = binds
       @cast = cast
+      @cte_depth = cte_depth
       @binds = binds_with_defaults(sql, binds)
     end
+
+    attr_reader :cte_depth
 
     def to_arel
       if binds.presence
@@ -250,8 +253,8 @@ module AppQuery
       end
     end
 
-    private def deep_dup(sql: self.sql, name: self.name, filename: self.filename, binds: self.binds, cast: self.cast)
-      self.class.new(sql, name:, filename:, binds:, cast:)
+    def deep_dup(sql: self.sql, name: self.name, filename: self.filename, binds: self.binds.dup, cast: self.cast, cte_depth: self.cte_depth)
+      self.class.new(sql, name:, filename:, binds:, cast:, cte_depth:)
     end
 
     # @!group Rendering
@@ -397,6 +400,30 @@ module AppQuery
     # @see #select_one
     def select_value(s = nil, binds: {}, select: nil, cast: self.cast)
       select_one(s, binds:, select:, cast:)&.values&.first
+    end
+
+    # Returns the count of rows from the query.
+    #
+    # Uses `:_` placeholder which references the current query result,
+    # so it works correctly with chained `with_select` calls.
+    #
+    # @return [Integer] the count of rows
+    #
+    # @example Simple count
+    #   AppQuery("SELECT * FROM users").count
+    #   # => 42
+    #
+    # @example Count with filtering
+    #   AppQuery("SELECT * FROM users")
+    #     .with_select("SELECT * FROM :_ WHERE active")
+    #     .count
+    #   # => 10
+    def count(select, binds: nil)
+      with_select(select).select_value(select: "SELECT COUNT(*) FROM :_", binds:)
+    end
+
+    def first(select, binds: nil)
+      select_one(select, binds:)
     end
 
     # Executes an INSERT query.
@@ -579,24 +606,43 @@ module AppQuery
 
     # Returns a new query with a modified SELECT statement.
     #
-    # If the query has a CTE named `"_"`, replaces the SELECT statement.
-    # Otherwise, wraps the original query in a `"_"` CTE and uses the new SELECT.
+    # Wraps the current SELECT in a numbered CTE and applies the new SELECT.
+    # CTEs are named `_`, `_1`, `_2`, etc. Use `:_` in the new SELECT to
+    # reference the previous result.
     #
     # @param sql [String, nil] the new SELECT statement (nil returns self)
     # @return [Q] a new query object with the modified SELECT
     #
-    # @example
-    #   AppQuery("SELECT id, name FROM users").with_select("SELECT COUNT(*) FROM _")
-    #   # => "WITH _ AS (\n  SELECT id, name FROM users\n)\nSELECT COUNT(*) FROM _"
+    # @example Single transformation
+    #   AppQuery("SELECT * FROM users").with_select("SELECT COUNT(*) FROM :_")
+    #   # => "WITH _ AS (\n  SELECT * FROM users\n)\nSELECT COUNT(*) FROM _"
+    #
+    # @example Chained transformations
+    #   AppQuery("SELECT * FROM users")
+    #     .with_select("SELECT * FROM :_ WHERE active")
+    #     .with_select("SELECT COUNT(*) FROM :_")
+    #   # => WITH _ AS (SELECT * FROM users),
+    #   #         _1 AS (SELECT * FROM _ WHERE active)
+    #   #    SELECT COUNT(*) FROM _1
     def with_select(sql)
       return self if sql.nil?
-      if cte_names.include?("_")
-        with_sql(tokens.each_with_object([]) do |token, acc|
-          v = (token[:t] == "SELECT") ? sql : token[:v]
+
+      # First CTE is "_", then "_1", "_2", etc.
+      current_cte = cte_depth == 0 ? "_" : "_#{cte_depth}"
+
+      # Replace :_ with the current CTE name
+      processed_sql = sql.gsub(/:_\b/, current_cte)
+
+      # Wrap current SELECT in numbered CTE
+      new_cte = "#{current_cte} AS (\n  #{select}\n)"
+
+      append_cte(new_cte).then do |q|
+        # Replace the SELECT token with processed_sql and increment depth
+        new_sql = q.tokens.each_with_object([]) do |token, acc|
+          v = (token[:t] == "SELECT") ? processed_sql : token[:v]
           acc << v
-        end.join)
-      else
-        append_cte("_ AS (\n  #{select}\n)").with_select(sql)
+        end.join
+        q.deep_dup(sql: new_sql, cte_depth: cte_depth + 1)
       end
     end
 

@@ -53,10 +53,15 @@ RSpec.describe AppQuery::Q do
         expect(aq.with_select("select 2").to_s).to match(/WITH _ AS/)
       end
 
-      it "replaces any existing CTE _" do
+      it "stacks CTEs when chaining with_select" do
         aq = app_query("select 1").with_select("select 2")
 
-        expect(aq.with_select("select 3").to_s).to_not match(/select 2/)
+        result = aq.with_select("select 3").to_s
+        expect(result).to match(/_ AS/)      # first CTE
+        expect(result).to match(/_1 AS/)     # second CTE
+        expect(result).to match(/select 1/)  # original query in _ CTE
+        expect(result).to match(/select 2/)  # first with_select in _1 CTE
+        expect(result).to match(/select 3/)  # final SELECT
       end
     end
 
