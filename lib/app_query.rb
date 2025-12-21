@@ -216,7 +216,7 @@ module AppQuery
     # @param sql [String] the SQL query string (may contain ERB)
     # @param name [String, nil] optional name for logging
     # @param filename [String, nil] optional filename for ERB error reporting
-    # @param binds [Array, Hash] bind parameters for the query
+    # @param binds [Hash, nil] bind parameters for the query
     # @param cast [Boolean, Hash, Array] type casting configuration
     #
     # @example Simple query
@@ -224,14 +224,17 @@ module AppQuery
     #
     # @example With ERB and binds
     #   Q.new("SELECT * FROM users WHERE id = :id", binds: {id: 1})
-    def initialize(sql, name: nil, filename: nil, binds: {}, cast: true)
+    def initialize(sql, name: nil, filename: nil, binds: {}, cast: true, cte_depth: 0)
       @sql = sql
       @name = name
       @filename = filename
       @binds = binds
       @cast = cast
+      @cte_depth = cte_depth
       @binds = binds_with_defaults(sql, binds)
     end
+
+    attr_reader :cte_depth
 
     def to_arel
       if binds.presence
@@ -250,8 +253,8 @@ module AppQuery
       end
     end
 
-    private def deep_dup(sql: self.sql, name: self.name, filename: self.filename, binds: self.binds, cast: self.cast)
-      self.class.new(sql, name:, filename:, binds:, cast:)
+    def deep_dup(sql: self.sql, name: self.name, filename: self.filename, binds: self.binds.dup, cast: self.cast, cte_depth: self.cte_depth)
+      self.class.new(sql, name:, filename:, binds:, cast:, cte_depth:)
     end
 
     # @!group Rendering
@@ -349,9 +352,8 @@ module AppQuery
     # @raise [UnrenderedQueryError] if the query contains unrendered ERB
     #
     # TODO: have aliases for common casts: select_all(cast: {"today" => :date})
-    def select_all(s = nil, binds: {}, select: nil, cast: self.cast)
-      select ||= s
-      add_binds(**binds).with_select(select).render({}).then do |aq|
+    def select_all(s = nil, binds: {}, cast: self.cast)
+      add_binds(**binds).with_select(s).render({}).then do |aq|
         sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
           aq.to_arel
         else
@@ -379,13 +381,14 @@ module AppQuery
     #   # => {"id" => 1, "name" => "Alice"}
     #
     # @see #select_all
-    def select_one(s = nil, binds: {}, select: nil, cast: self.cast)
-      select_all(s, binds:, select:, cast:).first
+    def select_one(s = nil, binds: {}, cast: self.cast)
+      with_select(s).select_all("SELECT * FROM :_ LIMIT 1", binds:, cast:).first
     end
+    alias_method :first, :select_one
 
     # Executes the query and returns the first value of the first row.
     #
-    # @param binds [Array, Hash, nil] bind parameters (positional or named)
+    # @param binds [Hash, nil] named bind parameters
     # @param select [String, nil] override the SELECT clause
     # @param cast [Boolean, Hash, Array] type casting configuration
     # @return [Object, nil] the first value, or nil if no results
@@ -395,13 +398,94 @@ module AppQuery
     #   # => 42
     #
     # @see #select_one
-    def select_value(s = nil, binds: {}, select: nil, cast: self.cast)
-      select_one(s, binds:, select:, cast:)&.values&.first
+    def select_value(s = nil, binds: {}, cast: self.cast)
+      select_one(s, binds:, cast:)&.values&.first
+    end
+
+    # Returns the count of rows from the query.
+    #
+    # Wraps the query in a CTE and selects only the count, which is more
+    # efficient than fetching all rows via `select_all.count`.
+    #
+    # @param s [String, nil] optional SELECT to apply before counting
+    # @param binds [Hash, nil] bind parameters to add
+    # @return [Integer] the count of rows
+    #
+    # @example Simple count
+    #   AppQuery("SELECT * FROM users").count
+    #   # => 42
+    #
+    # @example Count with filtering
+    #   AppQuery("SELECT * FROM users")
+    #     .with_select("SELECT * FROM :_ WHERE active")
+    #     .count
+    #   # => 10
+    def count(s = nil, binds: {})
+      with_select(s).select_all("SELECT COUNT(*) c FROM :_", binds:).column("c").first
+    end
+
+    # Returns an array of values for a single column.
+    #
+    # Wraps the query in a CTE and selects only the specified column, which is
+    # more efficient than fetching all columns via `select_all.column(name)`.
+    # The column name is safely quoted, making this method safe for user input.
+    #
+    # @param c [String, Symbol] the column name to extract
+    # @param s [String, nil] optional SELECT to apply before extracting
+    # @param binds [Hash, nil] bind parameters to add
+    # @return [Array] the column values
+    #
+    # @example Extract a single column
+    #   AppQuery("SELECT id, name FROM users").column(:name)
+    #   # => ["Alice", "Bob", "Charlie"]
+    #
+    # @example With additional filtering
+    #   AppQuery("SELECT * FROM users").column(:email, "SELECT * FROM :_ WHERE active")
+    #   # => ["alice@example.com", "bob@example.com"]
+    def column(c, s = nil, binds: {})
+      quoted_column = ActiveRecord::Base.connection.quote_column_name(c)
+      with_select(s).select_all("SELECT #{quoted_column} AS column FROM :_", binds:).column("column")
+    end
+
+    # Returns an array of id values from the query.
+    #
+    # Convenience method equivalent to `column(:id)`. More efficient than
+    # fetching all columns via `select_all.column("id")`.
+    #
+    # @param s [String, nil] optional SELECT to apply before extracting
+    # @param binds [Hash, nil] bind parameters to add
+    # @return [Array] the id values
+    #
+    # @example Get all user IDs
+    #   AppQuery("SELECT * FROM users").ids
+    #   # => [1, 2, 3]
+    #
+    # @example With filtering
+    #   AppQuery("SELECT * FROM users").ids("SELECT * FROM :_ WHERE active")
+    #   # => [1, 3]
+    def ids(s = nil, binds: {})
+      column(:id, s, binds:)
+    end
+
+    # Executes the query and returns results as an Array of Hashes.
+    #
+    # Shorthand for `select_all(...).entries`. Accepts the same arguments as
+    # {#select_all}.
+    #
+    # @return [Array<Hash>] the query results as an array
+    #
+    # @example
+    #   AppQuery("SELECT * FROM users").entries
+    #   # => [{"id" => 1, "name" => "Alice"}, {"id" => 2, "name" => "Bob"}]
+    #
+    # @see #select_all
+    def entries(...)
+      select_all(...).entries
     end
 
     # Executes an INSERT query.
     #
-    # @param binds [Hash] bind parameters for the query
+    # @param binds [Hash, nil] bind parameters for the query
     # @param returning [String, nil] columns to return (Rails 7.1+ only)
     # @return [Integer, Object] the inserted ID or returning value
     #
@@ -448,7 +532,7 @@ module AppQuery
 
     # Executes an UPDATE query.
     #
-    # @param binds [Hash] bind parameters for the query
+    # @param binds [Hash, nil] bind parameters for the query
     # @return [Integer] the number of affected rows
     #
     # @example With named binds
@@ -476,7 +560,7 @@ module AppQuery
 
     # Executes a DELETE query.
     #
-    # @param binds [Array, Hash] bind parameters for the query
+    # @param binds [Hash, nil] bind parameters for the query
     # @return [Integer] the number of deleted rows
     #
     # @example With named binds
@@ -532,7 +616,7 @@ module AppQuery
 
     # Returns a new query with different bind parameters.
     #
-    # @param binds [Hash] the bind parameters
+    # @param binds [Hash, nil] the bind parameters
     # @return [Q] a new query object with the binds replaced
     #
     # @example
@@ -546,7 +630,7 @@ module AppQuery
 
     # Returns a new query with binds added.
     #
-    # @param binds [Hash] the bind parameters to add
+    # @param binds [Hash, nil] the bind parameters to add
     # @return [Q] a new query object with the added binds
     #
     # @example
@@ -579,24 +663,43 @@ module AppQuery
 
     # Returns a new query with a modified SELECT statement.
     #
-    # If the query has a CTE named `"_"`, replaces the SELECT statement.
-    # Otherwise, wraps the original query in a `"_"` CTE and uses the new SELECT.
+    # Wraps the current SELECT in a numbered CTE and applies the new SELECT.
+    # CTEs are named `_`, `_1`, `_2`, etc. Use `:_` in the new SELECT to
+    # reference the previous result.
     #
     # @param sql [String, nil] the new SELECT statement (nil returns self)
     # @return [Q] a new query object with the modified SELECT
     #
-    # @example
-    #   AppQuery("SELECT id, name FROM users").with_select("SELECT COUNT(*) FROM _")
-    #   # => "WITH _ AS (\n  SELECT id, name FROM users\n)\nSELECT COUNT(*) FROM _"
+    # @example Single transformation
+    #   AppQuery("SELECT * FROM users").with_select("SELECT COUNT(*) FROM :_")
+    #   # => "WITH _ AS (\n  SELECT * FROM users\n)\nSELECT COUNT(*) FROM _"
+    #
+    # @example Chained transformations
+    #   AppQuery("SELECT * FROM users")
+    #     .with_select("SELECT * FROM :_ WHERE active")
+    #     .with_select("SELECT COUNT(*) FROM :_")
+    #   # => WITH _ AS (SELECT * FROM users),
+    #   #         _1 AS (SELECT * FROM _ WHERE active)
+    #   #    SELECT COUNT(*) FROM _1
     def with_select(sql)
       return self if sql.nil?
-      if cte_names.include?("_")
-        with_sql(tokens.each_with_object([]) do |token, acc|
-          v = (token[:t] == "SELECT") ? sql : token[:v]
+
+      # First CTE is "_", then "_1", "_2", etc.
+      current_cte = (cte_depth == 0) ? "_" : "_#{cte_depth}"
+
+      # Replace :_ with the current CTE name
+      processed_sql = sql.gsub(/:_\b/, current_cte)
+
+      # Wrap current SELECT in numbered CTE
+      new_cte = "#{current_cte} AS (\n  #{select}\n)"
+
+      append_cte(new_cte).then do |q|
+        # Replace the SELECT token with processed_sql and increment depth
+        new_sql = q.tokens.each_with_object([]) do |token, acc|
+          v = (token[:t] == "SELECT") ? processed_sql : token[:v]
           acc << v
-        end.join)
-      else
-        append_cte("_ AS (\n  #{select}\n)").with_select(sql)
+        end.join
+        q.deep_dup(sql: new_sql, cte_depth: cte_depth + 1)
       end
     end
 

@@ -3,66 +3,36 @@
 [![Gem Version](https://badge.fury.io/rb/appquery.svg)](https://badge.fury.io/rb/appquery)
 [![API Docs](https://img.shields.io/badge/API_Docs-YARD-blue.svg)](https://eval.github.io/appquery/)
 
-A Rubygem :gem: that makes working with raw SQL queries in Rails projects convenient.  
-Specifically it provides:
-- **...a dedicated folder for queries**  
-  e.g. `app/queries/reports/weekly.sql` is instantiated via `AppQuery["reports/weekly"]`.
-- **...easily execute select's**
-  ```ruby
-  AppQuery["reports/weekly"].select_all.entries
-  #=> [{id: 1, title: "Some report", ...}, ...]
-  # also: select_one, select_value
-  ```
-- **...querying a query**
-  ```ruby
-  AppQuery["reports/weekly"].select_value("select count(*) from _")
-  #=> 42
-  ```
-- **...ERB templating**  
-  Simple ERB templating with helper-functions:
-  ```sql
-  -- app/queries/contracts.sql.erb
-  SELECT * FROM contracts
-  <%= order_by(order) %>
-  # also: values, paginate, quote etc.
-  ```
-  ```ruby
-  AppQuery[:contracts].render(order: {year: :desc, month: :desc}).select_all
-  ```
-- **...named binds**  
-  ```ruby
-  # all binds have value nil by default
-  AppQuery(<<~SQL).select_all(binds: {ts1: 2.day.ago, ts2: Time.now}).column("series")
-    SELECT generate_series(:ts1::timestamp, :ts2::timestamp, COALESCE(:interval, '5 minutes')::interval) AS series
-  SQL
-  ```
-- **...casting**  
-  Automatic and custom casting:
-  ```ruby
-  AppQuery(%{select array[1,2]}).select_value #=> [1,2]
-  cast = {"data" => ActiveRecord::Type::Json.new}
-  AppQuery(%{select '{"a": 1}' as data}).select_value(cast:)
-  ```
-- **...helpers to rewrite a query for introspection during development and testing**  
-  Append/prepend CTEs:
-  ```ruby
-  query.prepend_cte(<<~CTE)
-    articles(id, title) AS (
-      VALUES(1, 'Some title'),
-            (2, 'Another article'))
-  CTE
-  ```
-- **...rspec generators and helpers**  
-  ```ruby
-  RSpec.describe "AppQuery reports/weekly", type: :query do
-    describe "CTE some_cte" do
-      # see what this CTE yields
-      expect(described_query.select_all("select * from some_cte")).to \
-        include(a_hash_including("id" => 1))
-  
-      # shorter: the query and CTE are derived from the describe-descriptions so this suffices:
-      expect(select_all).to include ...
-  ```
+A Ruby gem for working with raw SQL in Rails. Store queries in `app/queries/`, execute them with proper type casting, and filter/transform results using CTEs.
+
+```ruby
+# Load and execute
+AppQuery[:weekly_sales].select_all
+#=> [{"week" => 2025-01-13, "category" => "Electronics", "revenue" => 12500, "target_met" => true}, ...]
+
+# Filter results (query wraps in CTE, :_ references it)
+AppQuery[:weekly_sales].count("SELECT * FROM :_ WHERE NOT target_met")
+#=> 3
+
+# Extract a column efficiently (only fetches that column)
+AppQuery[:weekly_sales].column(:category)
+#=> ["Electronics", "Clothing", "Home & Garden"]
+
+# Named binds with defaults
+AppQuery[:weekly_sales].select_all(binds: {min_revenue: 5000})
+
+# ERB templating
+AppQuery("SELECT * FROM contracts <%= order_by(ordering) %>")
+  .render(ordering: {year: :desc}).select_all
+
+# Custom type casting
+AppQuery("SELECT metadata FROM products").select_all(cast: {"metadata" => ActiveRecord::Type::Json.new})
+
+# Inspect/mock CTEs for testing
+query.prepend_cte("sales AS (SELECT * FROM mock_data)")
+```
+
+**Highlights**: query files with generator · `select_all`/`select_one`/`select_value`/`count`/`column`/`ids` · query transformation via CTEs · immutable (derive new queries from existing) · named binds · ERB helpers (`order_by`, `paginate`, `values`, `bind`) · automatic + custom type casting · RSpec integration
 
 > [!IMPORTANT]  
 > **Status**: alpha. API might change. See the CHANGELOG for breaking changes when upgrading.
@@ -151,8 +121,10 @@ SQL
 ## query the articles-CTE
 [postgresql]> q.select_all(%{select * from articles where id < 2}).to_a
 
-## query the end-result (available as the CTE named '_')
-[postgresql]> q.select_one(%{select * from _ limit 1})
+## query the end-result (available via the placeholder ':_')
+[postgresql]> q.select_one(%{select * from :_ limit 1})
+### shorthand for that
+[postgresql]> q.first
 
 ## ERB templating
 # Extract a query from q that can be sorted dynamically:
@@ -270,20 +242,24 @@ AppQuery[:recent_articles].select_all(binds: {since: 1.month.ago}).entries
 # This prevents you from having to provide all binds every time. Default values are put in the SQL (via COALESCE).
 ```
 
-We can also dig deeper by query-ing the result, i.e. the CTE `_`:
+We can also dig deeper by query-ing the result, i.e. the CTE `:_`:
 
 ```ruby
-AppQuery[:recent_articles].select_one("select count(*) as cnt from _")
+AppQuery[:recent_articles].select_one("select count(*) as cnt from :_")
 # => {"cnt" => 13}
 
 # For these kind of aggregate queries, we're only interested in the value:
-AppQuery[:recent_articles].select_value("select count(*) from _")
+AppQuery[:recent_articles].select_value("select count(*) from :_")
 # => 13
+
+# but there's also the shorthand #count (which takes a sub-select):
+AppQuery[:recent_articles].count #=> 13
+AppQuery[:recent_articles].count(binds: {since: 0}) #=> 275
 ```
 
 Use `AppQuery#with_select` to get a new AppQuery-instance with the rewritten SQL:
 ```ruby
-puts AppQuery[:recent_articles].with_select("select * from _")
+puts AppQuery[:recent_articles].with_select("select id from :_")
 ```
 
 

@@ -5,6 +5,63 @@ RSpec.describe AppQuery::Q do
     AppQuery(...)
   end
 
+  def articles_query
+    app_query(<<~SQL)
+      with articles(id,title,published) as(
+        values(1, 'First', true),
+              (2, 'Second', false),
+              (3, 'Third', true))
+      select * from articles
+    SQL
+  end
+
+  describe "#count", :db do
+    specify "without select" do
+      expect(articles_query.count).to eq 3
+    end
+
+    specify "with select and binds" do
+      expect(articles_query.count(<<~SQL, binds: {published: true})).to eq 2
+        SELECT *
+        FROM :_
+        WHERE published = :published
+      SQL
+    end
+  end
+
+  describe "#column", :db do
+    specify "quotes the column name" do
+      expect(ActiveRecord::Base.connection).to receive(:quote_column_name).with("title").and_call_original
+      articles_query.column("title")
+    end
+
+    specify "without select" do
+      expect(articles_query.column("title")).to eq(["First", "Second", "Third"])
+    end
+
+    specify "with select and binds" do
+      expect(articles_query.column(:title, <<~SQL, binds: {published: true})).to eq(["First", "Third"])
+        SELECT *
+        FROM :_
+        WHERE published = :published
+      SQL
+    end
+  end
+
+  describe "#ids", :db do
+    specify "without select" do
+      expect(articles_query.ids).to eq([1, 2, 3])
+    end
+
+    specify "with select and binds" do
+      expect(articles_query.ids(<<~SQL, binds: {published: true})).to eq([1, 3])
+        SELECT *
+        FROM :_
+        WHERE published = :published
+      SQL
+    end
+  end
+
   describe "#with_sql" do
     it "returns a new instance with the sql" do
       aq = app_query("select 1")
@@ -53,10 +110,15 @@ RSpec.describe AppQuery::Q do
         expect(aq.with_select("select 2").to_s).to match(/WITH _ AS/)
       end
 
-      it "replaces any existing CTE _" do
+      it "stacks CTEs when chaining with_select" do
         aq = app_query("select 1").with_select("select 2")
 
-        expect(aq.with_select("select 3").to_s).to_not match(/select 2/)
+        result = aq.with_select("select 3").to_s
+        expect(result).to match(/_ AS/)      # first CTE
+        expect(result).to match(/_1 AS/)     # second CTE
+        expect(result).to match(/select 1/)  # original query in _ CTE
+        expect(result).to match(/select 2/)  # first with_select in _1 CTE
+        expect(result).to match(/select 3/)  # final SELECT
       end
     end
 
@@ -99,9 +161,7 @@ RSpec.describe AppQuery::Q do
       }.to raise_error(AppQuery::UnrenderedQueryError, /Query is ERB/)
     end
 
-    context "helper: quote" do
-      before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
-
+    context "helper: quote", :db do
       it "quotes" do
         expect(render_sql(<<~SQL, {})).to match(/VALUES\('Let''s learn SQL!'/)
           INSERT INTO videos (title)
@@ -110,9 +170,7 @@ RSpec.describe AppQuery::Q do
       end
     end
 
-    context "helper: values" do
-      before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
-
+    context "helper: values", :db do
       it "generates named placeholders for an array" do
         q = app_query(<<~SQL).render({})
           INSERT INTO videos (id, title)
@@ -162,9 +220,7 @@ RSpec.describe AppQuery::Q do
       end
     end
 
-    context "helper: bind" do
-      before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
-
+    context "helper: bind", :db do
       it "generates a named placeholder and collects the bind" do
         q = app_query(<<~SQL).render({})
           SELECT * FROM videos WHERE title = <%= bind("Some title") %>
@@ -352,9 +408,7 @@ RSpec.describe AppQuery::Q do
     end
   end
 
-  describe "query execution" do
-    before { ActiveRecord::Base.establish_connection(url: ENV["SPEC_DATABASE_URL"]) }
-
+  describe "query execution", :db do
     def query
       app_query(<<~SQL)
         with articles(id,title,published_on) as (
@@ -517,13 +571,8 @@ RSpec.describe AppQuery::Q do
         end
       end
 
-      describe ":select" do
+      describe "select argument" do
         it "overrides the select-part" do
-          expect(query.select_all(select: "select title from articles")).to \
-            include(a_hash_including("title" => "Some title"))
-        end
-
-        specify "accepted as first argument as well" do
           expect(query.select_all("select title from articles")).to \
             include(a_hash_including("title" => "Some title"))
         end
@@ -561,7 +610,7 @@ RSpec.describe AppQuery::Q do
         end
 
         it "casts values correctly" do
-          expect(query.select_all(select: "select * from _ where id = 1", cast: true)).to \
+          expect(query.select_all("select * from :_ where id = 1", cast: true)).to \
             include(a_hash_including("tags" => %w[ruby rails]))
           expect(query.select_all(cast: true)).to \
             include(a_hash_including("tags" => %w[ruby rails]))
@@ -572,7 +621,7 @@ RSpec.describe AppQuery::Q do
         end
 
         it "allows for custom casting" do
-          expect(query.select_all(select: "select * from articles",
+          expect(query.select_all("select * from articles",
             cast: {"published_on" => ActiveRecord::Type::Date.new})).to \
               include(a_hash_including("published_on" => "2024-3-31".to_date))
         end
