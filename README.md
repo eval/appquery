@@ -6,17 +6,17 @@
 A Rubygem :gem: that makes working with raw SQL queries in Rails projects convenient.  
 Specifically it provides:
 - **...a dedicated folder for queries**  
-  e.g. `app/queries/reports/weekly.sql` is instantiated via `AppQuery["reports/weekly"]`.
+  e.g. `app/queries/reports/weekly_sales.sql` is instantiated via `AppQuery["reports/weekly_sales"]`.
 - **...easily execute select's**
   ```ruby
-  AppQuery["reports/weekly"].select_all.entries
-  #=> [{id: 1, title: "Some report", ...}, ...]
+  AppQuery["reports/weekly_sales"].select_all.entries
+  #=> [{week: "2025-01-13", category: "Electronics", target_met: false, ...}, ...]
   # also: select_one, select_value
   ```
 - **...querying a query**
   ```ruby
-  AppQuery["reports/weekly"].select_value("select count(*) from _")
-  #=> 42
+  AppQuery["reports/weekly_sales"].select_all("SELECT * from :_ WHERE target_met")
+  #=> [{week: "2025-01-13", category: "Clothing", target_met: true, ...}, ...]
   ```
 - **...ERB templating**  
   Simple ERB templating with helper-functions:
@@ -151,8 +151,10 @@ SQL
 ## query the articles-CTE
 [postgresql]> q.select_all(%{select * from articles where id < 2}).to_a
 
-## query the end-result (available as the CTE named '_')
-[postgresql]> q.select_one(%{select * from _ limit 1})
+## query the end-result (available via the placeholder ':_')
+[postgresql]> q.select_one(%{select * from :_ limit 1})
+### shorthand for that
+[postgresql]> q.first
 
 ## ERB templating
 # Extract a query from q that can be sorted dynamically:
@@ -270,20 +272,24 @@ AppQuery[:recent_articles].select_all(binds: {since: 1.month.ago}).entries
 # This prevents you from having to provide all binds every time. Default values are put in the SQL (via COALESCE).
 ```
 
-We can also dig deeper by query-ing the result, i.e. the CTE `_`:
+We can also dig deeper by query-ing the result, i.e. the CTE `:_`:
 
 ```ruby
-AppQuery[:recent_articles].select_one("select count(*) as cnt from _")
+AppQuery[:recent_articles].select_one("select count(*) as cnt from :_")
 # => {"cnt" => 13}
 
 # For these kind of aggregate queries, we're only interested in the value:
-AppQuery[:recent_articles].select_value("select count(*) from _")
+AppQuery[:recent_articles].select_value("select count(*) from :_")
 # => 13
+
+# but there's also the shorthand #count (which takes a sub-select):
+AppQuery[:recent_articles].count #=> 13
+AppQuery[:recent_articles].count(binds: {since: 0}) #=> 275
 ```
 
 Use `AppQuery#with_select` to get a new AppQuery-instance with the rewritten SQL:
 ```ruby
-puts AppQuery[:recent_articles].with_select("select * from _")
+puts AppQuery[:recent_articles].with_select("select id from :_")
 ```
 
 
