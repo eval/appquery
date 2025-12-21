@@ -155,32 +155,42 @@ module AppQuery
     #   order_by(year: :desc, month: :desc)
     #   #=> "ORDER BY year DESC, month DESC"
     #
-    # @example Mixed directions
-    #   order_by(published_on: :desc, title: :asc)
-    #   #=> "ORDER BY published_on DESC, title ASC"
-    #
     # @example Column without direction (uses database default)
     #   order_by(id: nil)
     #   #=> "ORDER BY id"
+    #
+    # @example SQL literal
+    #   order_by("RANDOM()")
+    #   #=> "ORDER BY RANDOM()"
     #
     # @example In an ERB template with a variable
     #   SELECT * FROM articles
     #   <%= order_by(ordering) %>
     #
     # @example Making it optional (when ordering may not be provided)
-    #   <%= @ordering.presence && order_by(ordering) %>
+    #   <%= @order.presence && order_by(ordering) %>
     #
     # @example With default fallback
-    #   <%= order_by(@order || {id: :desc}) %>
+    #   <%= order_by(@order.presence || {id: :desc}) %>
     #
     # @raise [ArgumentError] if hash is blank (nil, empty, or not present)
     #
     # @note The hash must not be blank. Use conditional ERB for optional ordering.
-    def order_by(hash)
-      raise ArgumentError, "Provide columns to sort by, e.g. order_by(id: :asc)  (got #{hash.inspect})." unless hash.present?
-      "ORDER BY " + hash.map do |k, v|
-        v.nil? ? k : [k, v.upcase].join(" ")
-      end.join(", ")
+    def order_by(order)
+      usage = <<~USAGE
+        Provide columns to sort by, e.g. order_by(id: :asc), or SQL-literal, e.g. order_by("RANDOM()")  (got #{order.inspect}).
+      USAGE
+      raise ArgumentError, usage unless order.present?
+
+      case order
+      when String then "ORDER BY #{order}"
+      when Hash
+        "ORDER BY " + order.map do |k, v|
+          v.nil? ? k : [k, v.upcase].join(" ")
+        end.join(", ")
+      else
+        raise ArgumentError, usage
+      end
     end
 
     # Generates a LIMIT/OFFSET clause for pagination.
