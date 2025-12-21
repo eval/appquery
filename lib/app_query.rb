@@ -405,9 +405,11 @@ module AppQuery
 
     # Returns the count of rows from the query.
     #
-    # Uses `:_` placeholder which references the current query result,
-    # so it works correctly with chained `with_select` calls.
+    # Wraps the query in a CTE and selects only the count, which is more
+    # efficient than fetching all rows via `select_all.count`.
     #
+    # @param s [String, nil] optional SELECT to apply before counting
+    # @param binds [Hash, nil] bind parameters to add
     # @return [Integer] the count of rows
     #
     # @example Simple count
@@ -419,8 +421,51 @@ module AppQuery
     #     .with_select("SELECT * FROM :_ WHERE active")
     #     .count
     #   # => 10
-    def count(s = nil, binds: nil)
-      with_select(s).select_value("SELECT COUNT(*) FROM :_", binds:)
+    def count(s = nil, binds: {})
+      with_select(s).select_all("SELECT COUNT(*) c FROM :_", binds:).column("c").first
+    end
+
+    # Returns an array of values for a single column.
+    #
+    # Wraps the query in a CTE and selects only the specified column, which is
+    # more efficient than fetching all columns via `select_all.column(name)`.
+    # The column name is safely quoted, making this method safe for user input.
+    #
+    # @param c [String, Symbol] the column name to extract
+    # @param s [String, nil] optional SELECT to apply before extracting
+    # @param binds [Hash, nil] bind parameters to add
+    # @return [Array] the column values
+    #
+    # @example Extract a single column
+    #   AppQuery("SELECT id, name FROM users").column(:name)
+    #   # => ["Alice", "Bob", "Charlie"]
+    #
+    # @example With additional filtering
+    #   AppQuery("SELECT * FROM users").column(:email, "SELECT * FROM :_ WHERE active")
+    #   # => ["alice@example.com", "bob@example.com"]
+    def column(c, s = nil, binds: {})
+      quoted_column = ActiveRecord::Base.connection.quote_column_name(c)
+      with_select(s).select_all("SELECT #{quoted_column} AS column FROM :_", binds:).column("column")
+    end
+
+    # Returns an array of id values from the query.
+    #
+    # Convenience method equivalent to `column(:id)`. More efficient than
+    # fetching all columns via `select_all.column("id")`.
+    #
+    # @param s [String, nil] optional SELECT to apply before extracting
+    # @param binds [Hash, nil] bind parameters to add
+    # @return [Array] the id values
+    #
+    # @example Get all user IDs
+    #   AppQuery("SELECT * FROM users").ids
+    #   # => [1, 2, 3]
+    #
+    # @example With filtering
+    #   AppQuery("SELECT * FROM users").ids("SELECT * FROM :_ WHERE active")
+    #   # => [1, 3]
+    def ids(s = nil, binds: {})
+      column(:id, s, binds:)
     end
 
     # Executes an INSERT query.

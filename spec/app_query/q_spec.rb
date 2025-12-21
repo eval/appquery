@@ -5,23 +5,56 @@ RSpec.describe AppQuery::Q do
     AppQuery(...)
   end
 
-  describe "#count", :db do
-    def articles
-      app_query(<<~SQL)
-        with articles(id,title,published) as(
-          values(1, 'First', true),
-                (2, 'Second', false),
-                (3, 'Third', true))
-        select * from articles
-      SQL
-    end
+  def articles_query
+    app_query(<<~SQL)
+      with articles(id,title,published) as(
+        values(1, 'First', true),
+              (2, 'Second', false),
+              (3, 'Third', true))
+      select * from articles
+    SQL
+  end
 
+  describe "#count", :db do
     specify "without select" do
-      expect(articles.count).to eq 3
+      expect(articles_query.count).to eq 3
     end
 
     specify "with select and binds" do
-      expect(articles.count(<<~SQL, binds: {published: true})).to eq 2
+      expect(articles_query.count(<<~SQL, binds: {published: true})).to eq 2
+        SELECT *
+        FROM :_
+        WHERE published = :published
+      SQL
+    end
+  end
+
+  describe "#column", :db do
+    specify "quotes the column name" do
+      expect(ActiveRecord::Base.connection).to receive(:quote_column_name).with("title").and_call_original
+      articles_query.column("title")
+    end
+
+    specify "without select" do
+      expect(articles_query.column("title")).to eq(["First", "Second", "Third"])
+    end
+
+    specify "with select and binds" do
+      expect(articles_query.column(:title, <<~SQL, binds: {published: true})).to eq(["First", "Third"])
+        SELECT *
+        FROM :_
+        WHERE published = :published
+      SQL
+    end
+  end
+
+  describe "#ids", :db do
+    specify "without select" do
+      expect(articles_query.ids).to eq([1, 2, 3])
+    end
+
+    specify "with select and binds" do
+      expect(articles_query.ids(<<~SQL, binds: {published: true})).to eq([1, 3])
         SELECT *
         FROM :_
         WHERE published = :published
