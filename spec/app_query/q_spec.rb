@@ -5,6 +5,19 @@ RSpec.describe AppQuery::Q do
     AppQuery(...)
   end
 
+  describe "#count", :db do
+    # without select
+    # with select
+    specify "without select" do
+      q = app_query(<<~SQL)
+        with articles(id,title) as(values(1,'First'), (2, 'Second'))
+        select * from articles
+      SQL
+
+      expect(q.count).to eq 2
+    end
+  end
+
   describe "#with_sql" do
     it "returns a new instance with the sql" do
       aq = app_query("select 1")
@@ -522,13 +535,8 @@ RSpec.describe AppQuery::Q do
         end
       end
 
-      describe ":select" do
+      describe "select argument" do
         it "overrides the select-part" do
-          expect(query.select_all(select: "select title from articles")).to \
-            include(a_hash_including("title" => "Some title"))
-        end
-
-        specify "accepted as first argument as well" do
           expect(query.select_all("select title from articles")).to \
             include(a_hash_including("title" => "Some title"))
         end
@@ -566,7 +574,7 @@ RSpec.describe AppQuery::Q do
         end
 
         it "casts values correctly" do
-          expect(query.select_all(select: "select * from _ where id = 1", cast: true)).to \
+          expect(query.select_all("select * from :_ where id = 1", cast: true)).to \
             include(a_hash_including("tags" => %w[ruby rails]))
           expect(query.select_all(cast: true)).to \
             include(a_hash_including("tags" => %w[ruby rails]))
@@ -577,7 +585,7 @@ RSpec.describe AppQuery::Q do
         end
 
         it "allows for custom casting" do
-          expect(query.select_all(select: "select * from articles",
+          expect(query.select_all("select * from articles",
             cast: {"published_on" => ActiveRecord::Type::Date.new})).to \
               include(a_hash_including("published_on" => "2024-3-31".to_date))
         end

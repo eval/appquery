@@ -352,9 +352,8 @@ module AppQuery
     # @raise [UnrenderedQueryError] if the query contains unrendered ERB
     #
     # TODO: have aliases for common casts: select_all(cast: {"today" => :date})
-    def select_all(s = nil, binds: {}, select: nil, cast: self.cast)
-      select ||= s
-      add_binds(**binds).with_select(select).render({}).then do |aq|
+    def select_all(s = nil, binds: {}, cast: self.cast)
+      add_binds(**binds).with_select(s).render({}).then do |aq|
         sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1
           aq.to_arel
         else
@@ -369,6 +368,7 @@ module AppQuery
       raise e unless e.instance_of?(NameError)
       raise UnrenderedQueryError, "Query is ERB. Use #render before select-ing."
     end
+    alias_method :entries, :select_all
 
     # Executes the query and returns the first row.
     #
@@ -382,9 +382,10 @@ module AppQuery
     #   # => {"id" => 1, "name" => "Alice"}
     #
     # @see #select_all
-    def select_one(s = nil, binds: {}, select: nil, cast: self.cast)
-      select_all(s, binds:, select:, cast:).first
+    def select_one(s = nil, binds: {}, cast: self.cast)
+      with_select(s).select_all("SELECT * FROM :_ LIMIT 1", binds:, cast:).first
     end
+    alias_method :first, :select_one
 
     # Executes the query and returns the first value of the first row.
     #
@@ -398,8 +399,8 @@ module AppQuery
     #   # => 42
     #
     # @see #select_one
-    def select_value(s = nil, binds: {}, select: nil, cast: self.cast)
-      select_one(s, binds:, select:, cast:)&.values&.first
+    def select_value(s = nil, binds: {}, cast: self.cast)
+      select_one(s, binds:, cast:)&.values&.first
     end
 
     # Returns the count of rows from the query.
@@ -418,12 +419,8 @@ module AppQuery
     #     .with_select("SELECT * FROM :_ WHERE active")
     #     .count
     #   # => 10
-    def count(select, binds: nil)
-      with_select(select).select_value(select: "SELECT COUNT(*) FROM :_", binds:)
-    end
-
-    def first(select, binds: nil)
-      select_one(select, binds:)
+    def count(s = nil, binds: nil)
+      with_select(s).select_value("SELECT COUNT(*) FROM :_", binds:)
     end
 
     # Executes an INSERT query.
@@ -628,7 +625,7 @@ module AppQuery
       return self if sql.nil?
 
       # First CTE is "_", then "_1", "_2", etc.
-      current_cte = cte_depth == 0 ? "_" : "_#{cte_depth}"
+      current_cte = (cte_depth == 0) ? "_" : "_#{cte_depth}"
 
       # Replace :_ with the current CTE name
       processed_sql = sql.gsub(/:_\b/, current_cte)
