@@ -15,7 +15,7 @@ Specifically it provides:
   ```
 - **...querying a query**
   ```ruby
-  AppQuery["reports/weekly"].select_value(select: "select count(*) from _")
+  AppQuery["reports/weekly"].select_value("select count(*) from _")
   #=> 42
   ```
 - **...ERB templating**  
@@ -57,7 +57,7 @@ Specifically it provides:
   RSpec.describe "AppQuery reports/weekly", type: :query do
     describe "CTE some_cte" do
       # see what this CTE yields
-      expect(described_query.select_all(select: "select * from some_cte")).to \
+      expect(described_query.select_all("select * from some_cte")).to \
         include(a_hash_including("id" => 1))
   
       # shorter: the query and CTE are derived from the describe-descriptions so this suffices:
@@ -149,10 +149,10 @@ casts = {"today" => ActiveRecord::Type::Date.new}
 SQL
 
 ## query the articles-CTE
-[postgresql]> q.select_all(select: %{select * from articles where id < 2}).to_a
+[postgresql]> q.select_all(%{select * from articles where id < 2}).to_a
 
 ## query the end-result (available as the CTE named '_')
-[postgresql]> q.select_one(select: %{select * from _ limit 1})
+[postgresql]> q.select_one(%{select * from _ limit 1})
 
 ## ERB templating
 # Extract a query from q that can be sorted dynamically:
@@ -273,11 +273,11 @@ AppQuery[:recent_articles].select_all(binds: {since: 1.month.ago}).entries
 We can also dig deeper by query-ing the result, i.e. the CTE `_`:
 
 ```ruby
-AppQuery[:recent_articles].select_one(select: "select count(*) as cnt from _")
+AppQuery[:recent_articles].select_one("select count(*) as cnt from _")
 # => {"cnt" => 13}
 
 # For these kind of aggregate queries, we're only interested in the value:
-AppQuery[:recent_articles].select_value(select: "select count(*) from _")
+AppQuery[:recent_articles].select_value("select count(*) from _")
 # => 13
 ```
 
@@ -291,13 +291,13 @@ puts AppQuery[:recent_articles].with_select("select * from _")
 
 You can select from a CTE similarly:
 ```ruby
-AppQuery[:recent_articles].select_all(select: "SELECT * FROM tags_by_article")
+AppQuery[:recent_articles].select_all("SELECT * FROM tags_by_article")
 # => [{"article_id"=>1, "tags"=>"[\"release:pre\",\"release:patch\",\"release:1x\"]"},
       ...]
 
 # NOTE how the tags are json strings. Casting allows us to turn these into proper arrays^1:
 types = {"tags" => ActiveRecord::Type::Json.new}
-AppQuery[:recent_articles].select_all(select: "SELECT * FROM tags_by_article", cast: types)
+AppQuery[:recent_articles].select_all("SELECT * FROM tags_by_article", cast: types)
 
 1) unlike SQLite, PostgreSQL has json and array types. Just casting suffices:
 AppQuery("select json_build_object('a', 1, 'b', true)").select_one(cast: true)
@@ -343,7 +343,7 @@ require "rails_helper"
 RSpec.describe "AppQuery reports/weekly", type: :query, default_binds: [] do
   describe "CTE articles" do
     specify do
-      expect(described_query.select_all(select: "select * from :cte")).to \
+      expect(described_query.select_all("select * from :cte")).to \
         include(a_hash_including("article_id" => 1))
 
       # short version: query, cte and select are all implied from descriptions
