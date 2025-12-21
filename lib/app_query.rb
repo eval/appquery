@@ -368,7 +368,6 @@ module AppQuery
       raise e unless e.instance_of?(NameError)
       raise UnrenderedQueryError, "Query is ERB. Use #render before select-ing."
     end
-    alias_method :entries, :select_all
 
     # Executes the query and returns the first row.
     #
@@ -466,6 +465,22 @@ module AppQuery
     #   # => [1, 3]
     def ids(s = nil, binds: {})
       column(:id, s, binds:)
+    end
+
+    # Executes the query and returns results as an Array of Hashes.
+    #
+    # Shorthand for `select_all(...).entries`. Accepts the same arguments as
+    # {#select_all}.
+    #
+    # @return [Array<Hash>] the query results as an array
+    #
+    # @example
+    #   AppQuery("SELECT * FROM users").entries
+    #   # => [{"id" => 1, "name" => "Alice"}, {"id" => 2, "name" => "Bob"}]
+    #
+    # @see #select_all
+    def entries(...)
+      select_all(...).entries
     end
 
     # Executes an INSERT query.
