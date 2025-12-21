@@ -7,15 +7,16 @@ A Ruby gem for working with raw SQL in Rails. Store queries in `app/queries/`, e
 
 ```ruby
 # Load and execute
-AppQuery[:weekly_sales].select_all
+week = AppQuery[:weekly_sales].with_binds(week: 1, year: 2025)
+week.entries
 #=> [{"week" => 2025-01-13, "category" => "Electronics", "revenue" => 12500, "target_met" => true}, ...]
 
 # Filter results (query wraps in CTE, :_ references it)
-AppQuery[:weekly_sales].count("SELECT * FROM :_ WHERE NOT target_met")
+week.count("SELECT * FROM :_ WHERE NOT target_met")
 #=> 3
 
 # Extract a column efficiently (only fetches that column)
-AppQuery[:weekly_sales].column(:category)
+week.column(:category)
 #=> ["Electronics", "Clothing", "Home & Garden"]
 
 # Named binds with defaults
@@ -35,7 +36,7 @@ query.prepend_cte("sales AS (SELECT * FROM mock_data)")
 **Highlights**: query files with generator · `select_all`/`select_one`/`select_value`/`count`/`column`/`ids` · query transformation via CTEs · immutable (derive new queries from existing) · named binds · ERB helpers (`order_by`, `paginate`, `values`, `bind`) · automatic + custom type casting · RSpec integration
 
 > [!IMPORTANT]  
-> **Status**: alpha. API might change. See the CHANGELOG for breaking changes when upgrading.
+> **Status**: alpha. API might change. See [the CHANGELOG](./CHANGELOG.md) for breaking changes when upgrading.
 >
 
 ## Rationale
