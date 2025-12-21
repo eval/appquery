@@ -246,7 +246,7 @@ module AppQuery
       if (named_binds = sql.scan(/:(?<!::)([a-zA-Z]\w*)/).flatten.map(&:to_sym).uniq.presence)
         named_binds.zip(Array.new(named_binds.count)).to_h.merge(binds.to_h)
       else
-        {}
+        binds.to_h
       end
     end
 
