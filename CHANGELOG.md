@@ -9,7 +9,16 @@
   # instead of
   query.select_all(cast: {"published_on" => ActiveRecord::Type::Date.new})
   ```
-  Supports all ActiveRecord types including adapter-specific ones (`:uuid`, `:jsonb`, etc.).  
+  Supports all ActiveRecord types including adapter-specific ones (`:uuid`, `:jsonb`, etc.).
+- 🔑 **Indifferent access** — for rows and cast keys
+  ```ruby
+  row = query.select_one
+  row["name"]  # works
+  row[:name]   # also works
+
+  # cast keys can be symbols too
+  query.select_all(cast: {published_on: :date})
+  ```  
 
 ## [0.5.0] - 2025-12-21
 

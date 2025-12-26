@@ -137,6 +137,17 @@ module AppQuery
       count
     end
 
+    private
+
+    # Override to provide indifferent access (string or symbol keys).
+    def hash_rows
+      @hash_rows ||= rows.map do |row|
+        columns.zip(row).to_h.with_indifferent_access
+      end
+    end
+
+    public
+
     # Resolves a cast type value, converting symbols to ActiveRecord types.
     #
     # @param value [Symbol, Object] the cast type (symbol shorthand or type instance)
@@ -162,7 +173,7 @@ module AppQuery
         when Array
           r.columns.zip(cast).to_h
         when Hash
-          cast.transform_values { |v| resolve_cast_type(v) }
+          cast.transform_keys(&:to_s).transform_values { |v| resolve_cast_type(v) }
         else
           {}
         end
