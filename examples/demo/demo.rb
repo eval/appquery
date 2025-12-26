@@ -100,10 +100,7 @@ end
 class ArticlesController < ActionController::Base
   def index
     @tag = params[:tag]
-    @articles = AppQuery[:recent_articles].select_all(binds: {since: 0, tag: @tag}).map do
-      it["tags"] &&= JSON.parse(it["tags"])
-      it
-    end
+    @articles = recent_articles.entries(binds: {since: 0, tag: @tag})
 
     render inline: <<~ERB
       <!DOCTYPE html>
@@ -133,6 +130,12 @@ class ArticlesController < ActionController::Base
       </body>
       </html>
     ERB
+  end
+
+  private
+
+  def recent_articles
+    AppQuery[:recent_articles, cast: {"tags" => ActiveRecord::Type::Json.new}]
   end
 end
 
