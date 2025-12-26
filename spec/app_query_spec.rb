@@ -8,7 +8,7 @@ RSpec.describe AppQuery do
     AppQuery(...)
   end
 
-  describe "::[]" do
+  shared_context "with query path" do
     around do |example|
       Dir.mktmpdir do |dir|
         @query_path = dir
@@ -19,11 +19,15 @@ RSpec.describe AppQuery do
 
     after { described_class.reset_configuration! }
 
-    def write_query(filename, content)
+    def write_query(filename, content = "SELECT 1")
       path = File.join(@query_path, filename)
       FileUtils.mkdir_p(File.dirname(path))
       File.write(path, content)
     end
+  end
+
+  describe "::[]" do
+    include_context "with query path"
 
     describe "default binds" do
       it "initializes defaults binds" do
@@ -83,6 +87,51 @@ RSpec.describe AppQuery do
 
     it "has certain defaults" do
       expect(described_class.configuration).to have_attributes("query_path" => "app/queries")
+    end
+  end
+
+  describe "::queries" do
+    include_context "with query path"
+
+    it "returns empty array when no queries exist" do
+      expect(described_class.queries).to eq([])
+    end
+
+    it "finds .sql files" do
+      write_query("simple.sql")
+
+      result = described_class.queries
+      expect(result).to include(a_hash_including(name: "simple", erb: false))
+    end
+
+    it "finds .sql.erb files" do
+      write_query("dynamic.sql.erb")
+
+      result = described_class.queries
+      expect(result).to include(a_hash_including(name: "dynamic", erb: true))
+    end
+
+    it "includes subdirectories in name" do
+      write_query("reports/weekly.sql")
+
+      result = described_class.queries
+      expect(result).to include(a_hash_including(name: "reports/weekly"))
+    end
+
+    it "returns absolute path" do
+      write_query("test.sql")
+
+      result = described_class.queries.first
+      expect(result[:path]).to start_with("/")
+      expect(result[:path]).to end_with("test.sql")
+    end
+
+    it "sorts by name" do
+      write_query("zebra.sql")
+      write_query("alpha.sql")
+
+      names = described_class.queries.map { |q| q[:name] }
+      expect(names).to eq(%w[alpha zebra])
     end
   end
 end

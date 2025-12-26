@@ -18,6 +18,11 @@
 
   # cast keys can be symbols too
   query.select_all(cast: {published_on: :date})
+  ```
+- 📋 **`AppQuery.queries`** — list available queries with metadata
+  ```ruby
+  AppQuery.queries
+  #=> [{name: "weekly_sales", path: "...", erb: false}, ...]
   ```  
 
 ## [0.5.0] - 2025-12-21
