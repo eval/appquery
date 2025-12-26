@@ -639,6 +639,18 @@ RSpec.describe AppQuery::Q do
             cast: {"published_on" => ActiveRecord::Type::Date.new})).to \
               include(a_hash_including("published_on" => "2024-3-31".to_date))
         end
+
+        it "allows symbol shorthands for types" do
+          expect(query.select_all("select * from articles",
+            cast: {"published_on" => :date})).to \
+              include(a_hash_including("published_on" => "2024-3-31".to_date))
+        end
+
+        it "allows mixing shorthands with explicit types" do
+          types = {"published_on" => :date, "id" => ActiveRecord::Type::Integer.new}
+          expect(query.select_all("select * from articles", cast: types)).to \
+            include(a_hash_including("published_on" => "2024-3-31".to_date, "id" => 1))
+        end
       end
     end
   end

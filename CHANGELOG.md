@@ -2,7 +2,14 @@
 
 ### ✨ Features
 
-- Add `any?`, `none?` - efficient ways to see if there's any results for a query.  
+- Add `any?`, `none?` - efficient ways to see if there's any results for a query.
+- 🎯 **Cast type shorthands** — use symbols instead of explicit type classes
+  ```ruby
+  query.select_all(cast: {"published_on" => :date})
+  # instead of
+  query.select_all(cast: {"published_on" => ActiveRecord::Type::Date.new})
+  ```
+  Supports all ActiveRecord types including adapter-specific ones (`:uuid`, `:jsonb`, etc.).  
 
 ## [0.5.0] - 2025-12-21
 
