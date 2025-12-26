@@ -113,6 +113,33 @@ module AppQuery
     Q.new(full_path.read, name: "AppQuery #{query_name}", filename: full_path.to_s, **opts)
   end
 
+  # Lists all available queries in the configured query path.
+  #
+  # @return [Array<Hash>] array of query metadata hashes with keys:
+  #   - `:name` — query name for use with {AppQuery.[]}
+  #   - `:path` — absolute path to the query file
+  #   - `:erb` — true if the query uses ERB templating
+  #
+  # @example
+  #   AppQuery.queries
+  #   #=> [
+  #   #     {name: "weekly_sales", path: "/app/queries/weekly_sales.sql", erb: false},
+  #   #     {name: "reports/monthly", path: "/app/queries/reports/monthly.sql.erb", erb: true},
+  #   #   ]
+  def self.queries
+    base = Pathname.new(configuration.query_path).expand_path
+    return [] unless base.exist?
+
+    Dir.glob(base.join("**/*.sql{,.erb}")).map do |path|
+      full_path = Pathname.new(path)
+      relative = full_path.relative_path_from(base)
+      erb = path.end_with?(".erb")
+      name = relative.to_s.sub(/\.sql(\.erb)?$/, "")
+
+      {name: name, path: path, erb: erb}
+    end.sort_by { |q| q[:name] }
+  end
+
   class Result < ActiveRecord::Result
     attr_accessor :cast
     alias_method :cast?, :cast
