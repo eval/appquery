@@ -22,7 +22,7 @@ require "active_record"
 #   end
 #
 # @example CTE manipulation
-#   AppQuery(<<~SQL).select_all(select: "select * from articles where id = 1")
+#   AppQuery(<<~SQL).select_all("select * from articles where id = 1")
 #     WITH articles AS(...)
 #     SELECT * FROM articles
 #     ORDER BY id
@@ -137,6 +137,34 @@ module AppQuery
       count
     end
 
+    private
+
+    # Override to provide indifferent access (string or symbol keys).
+    def hash_rows
+      @hash_rows ||= rows.map do |row|
+        columns.zip(row).to_h.with_indifferent_access
+      end
+    end
+
+    public
+
+    # Resolves a cast type value, converting symbols to ActiveRecord types.
+    #
+    # @param value [Symbol, Object] the cast type (symbol shorthand or type instance)
+    # @return [Object] the resolved type instance
+    #
+    # @example
+    #   resolve_cast_type(:date)  #=> ActiveRecord::Type::Date instance
+    #   resolve_cast_type(ActiveRecord::Type::Json.new)  #=> returns as-is
+    def self.resolve_cast_type(value)
+      case value
+      when Symbol
+        ActiveRecord::Type.lookup(value)
+      else
+        value
+      end
+    end
+
     def self.from_ar_result(r, cast = nil)
       if r.empty?
         EMPTY
@@ -145,7 +173,7 @@ module AppQuery
         when Array
           r.columns.zip(cast).to_h
         when Hash
-          cast
+          cast.transform_keys(&:to_s).transform_values { |v| resolve_cast_type(v) }
         else
           {}
         end
@@ -342,16 +370,18 @@ module AppQuery
     # @example (Named) binds
     #   AppQuery("SELECT * FROM users WHERE id = :id").select_all(binds: {id: 1})
     #
-    # @example With type casting
-    #   AppQuery("SELECT created_at FROM users")
-    #     .select_all(cast: {created_at: ActiveRecord::Type::DateTime.new})
+    # @example With type casting (shorthand)
+    #   AppQuery("SELECT published_on FROM articles")
+    #     .select_all(cast: {"published_on" => :date})
+    #
+    # @example With type casting (explicit)
+    #   AppQuery("SELECT metadata FROM products")
+    #     .select_all(cast: {"metadata" => ActiveRecord::Type::Json.new})
     #
     # @example Override SELECT clause
-    #   AppQuery("SELECT * FROM users").select_all(select: "COUNT(*)")
+    #   AppQuery("SELECT * FROM users").select_all("COUNT(*)")
     #
     # @raise [UnrenderedQueryError] if the query contains unrendered ERB
-    #
-    # TODO: have aliases for common casts: select_all(cast: {"today" => :date})
     def select_all(s = nil, binds: {}, cast: self.cast)
       add_binds(**binds).with_select(s).render({}).then do |aq|
         sql = if ActiveRecord::VERSION::STRING.to_f >= 7.1

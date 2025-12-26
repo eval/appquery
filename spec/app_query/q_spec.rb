@@ -114,7 +114,7 @@ RSpec.describe AppQuery::Q do
 
   describe "#with_select" do
     it "changes the select" do
-      expect(p(app_query("select 1").with_select("select 2"))).to have_attributes(select: "select 2")
+      expect(app_query("select 1").with_select("select 2")).to have_attributes(select: "select 2")
     end
 
     describe "sql" do
@@ -440,6 +440,26 @@ RSpec.describe AppQuery::Q do
       it "casts" do
         expect(query.select_one(cast: true)).to include("tags" => %w[ruby rails])
       end
+
+      it "supports indifferent access" do
+        row = query.select_one
+        expect(row[:id]).to eq(row["id"])
+        expect(row[:tags]).to eq(row["tags"])
+      end
+    end
+
+    describe "#select_all" do
+      it "supports indifferent access" do
+        results = query.select_all
+        row = results.first
+        expect(row[:id]).to eq(row["id"])
+      end
+
+      it "supports indifferent access during iteration" do
+        query.select_all.each do |row|
+          expect(row[:id]).to eq(row["id"])
+        end
+      end
     end
 
     describe "#insert" do
@@ -638,6 +658,23 @@ RSpec.describe AppQuery::Q do
           expect(query.select_all("select * from articles",
             cast: {"published_on" => ActiveRecord::Type::Date.new})).to \
               include(a_hash_including("published_on" => "2024-3-31".to_date))
+        end
+
+        it "allows symbol shorthands for types" do
+          expect(query.select_all("select * from articles",
+            cast: {"published_on" => :date})).to \
+              include(a_hash_including("published_on" => "2024-3-31".to_date))
+        end
+
+        it "allows mixing shorthands with explicit types" do
+          types = {"published_on" => :date, "id" => ActiveRecord::Type::Integer.new}
+          expect(query.select_all("select * from articles", cast: types)).to \
+            include(a_hash_including("published_on" => "2024-3-31".to_date, "id" => 1))
+        end
+
+        it "allows symbol keys in cast hash" do
+          expect(query.select_all("select * from articles", cast: {published_on: :date})).to \
+            include(a_hash_including("published_on" => "2024-3-31".to_date))
         end
       end
     end
