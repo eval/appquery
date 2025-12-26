@@ -27,7 +27,7 @@ AppQuery("SELECT * FROM contracts <%= order_by(ordering) %>")
   .render(ordering: {year: :desc}).select_all
 
 # Custom type casting
-AppQuery("SELECT metadata FROM products").select_all(cast: {"metadata" => ActiveRecord::Type::Json.new})
+AppQuery("SELECT metadata FROM products").select_all(cast: {metadata: :json})
 
 # Inspect/mock CTEs for testing
 query.prepend_cte("sales AS (SELECT * FROM mock_data)")
@@ -91,7 +91,7 @@ The prompt indicates what adapter the example uses:
     AS series
 SQL
 
-# casting
+# ing
 ## Cast values are used by default:
 [postgresql]> AppQuery(%{select date('now')}).select_first
 => {"today" => Sat, 10 May 2025}
@@ -103,8 +103,8 @@ SQL
 [sqlite]> AppQuery(%{select date('now') as today}).select_one(cast: true)
 => {"today" => "2025-05-12"}
 ## Providing per-column-casts fixes this:
-casts = {"today" => ActiveRecord::Type::Date.new}
-[sqlite]> AppQuery(%{select date('now') as today}).select_one(cast: casts)
+cast = {today: :date}
+[sqlite]> AppQuery(%{select date('now') as today}).select_one(cast:)
 => {"today" => Mon, 12 May 2025}
 
 
@@ -114,7 +114,7 @@ casts = {"today" => ActiveRecord::Type::Date.new}
   [2, "Let's learn SQL", 1.month.ago.to_date],
   [3, "Another article", 2.weeks.ago.to_date]
 ]
-[postgresql]> q = AppQuery(<<~SQL, cast: {"published_on" => ActiveRecord::Type::Date.new}).render(articles:)
+[postgresql]> q = AppQuery(<<~SQL, cast: {published_on: :date}).render(articles:)
   WITH articles(id,title,published_on) AS (<%= values(articles) %>)
   select * from articles order by id DESC
 SQL
@@ -273,8 +273,8 @@ AppQuery[:recent_articles].select_all("SELECT * FROM tags_by_article")
       ...]
 
 # NOTE how the tags are json strings. Casting allows us to turn these into proper arrays^1:
-types = {"tags" => ActiveRecord::Type::Json.new}
-AppQuery[:recent_articles].select_all("SELECT * FROM tags_by_article", cast: types)
+cast = {tags: :json}
+AppQuery[:recent_articles].select_all("SELECT * FROM tags_by_article", cast:)
 
 1) unlike SQLite, PostgreSQL has json and array types. Just casting suffices:
 AppQuery("select json_build_object('a', 1, 'b', true)").select_one(cast: true)
