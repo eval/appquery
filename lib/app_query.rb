@@ -22,7 +22,7 @@ require "active_record"
 #   end
 #
 # @example CTE manipulation
-#   AppQuery(<<~SQL).select_all(select: "select * from articles where id = 1")
+#   AppQuery(<<~SQL).select_all("select * from articles where id = 1")
 #     WITH articles AS(...)
 #     SELECT * FROM articles
 #     ORDER BY id
@@ -347,7 +347,7 @@ module AppQuery
     #     .select_all(cast: {created_at: ActiveRecord::Type::DateTime.new})
     #
     # @example Override SELECT clause
-    #   AppQuery("SELECT * FROM users").select_all(select: "COUNT(*)")
+    #   AppQuery("SELECT * FROM users").select_all("COUNT(*)")
     #
     # @raise [UnrenderedQueryError] if the query contains unrendered ERB
     #
