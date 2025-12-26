@@ -48,6 +48,20 @@ RSpec.describe AppQuery::Q do
     end
   end
 
+  describe "#any?", :db do
+    specify "without select" do
+      expect(articles_query.any?).to be
+    end
+
+    specify "with select and binds" do
+      expect(articles_query.any?(<<~SQL)).to_not be
+        SELECT *
+        FROM :_
+        WHERE published AND id in (2)
+      SQL
+    end
+  end
+
   describe "#ids", :db do
     specify "without select" do
       expect(articles_query.ids).to eq([1, 2, 3])

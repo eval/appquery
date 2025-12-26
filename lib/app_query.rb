@@ -424,6 +424,41 @@ module AppQuery
       with_select(s).select_all("SELECT COUNT(*) c FROM :_", binds:).column("c").first
     end
 
+    # Returns whether any rows exist in the query result.
+    #
+    # Uses `EXISTS` which stops at the first matching row, making it more
+    # efficient than `count > 0` for large result sets.
+    #
+    # @param s [String, nil] optional SELECT to apply before checking
+    # @param binds [Hash, nil] bind parameters to add
+    # @return [Boolean] true if at least one row exists
+    #
+    # @example Check if query has results
+    #   AppQuery("SELECT * FROM users").any?
+    #   # => true
+    #
+    # @example Check with filtering
+    #   AppQuery("SELECT * FROM users").any?("SELECT * FROM :_ WHERE admin")
+    #   # => false
+    def any?(s = nil, binds: {})
+      with_select(s).select_all("SELECT EXISTS(SELECT 1 FROM :_) e", binds:).column("e").first
+    end
+
+    # Returns whether no rows exist in the query result.
+    #
+    # Inverse of {#any?}. Uses `EXISTS` for efficiency.
+    #
+    # @param s [String, nil] optional SELECT to apply before checking
+    # @param binds [Hash, nil] bind parameters to add
+    # @return [Boolean] true if no rows exist
+    #
+    # @example Check if query is empty
+    #   AppQuery("SELECT * FROM users WHERE admin").none?
+    #   # => true
+    def none?(s = nil, binds: {})
+      !any?(s, binds:)
+    end
+
     # Returns an array of values for a single column.
     #
     # Wraps the query in a CTE and selects only the specified column, which is

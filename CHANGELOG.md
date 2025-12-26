@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### ✨ Features
+
+- Add `any?`, `none?` - efficient ways to see if there's any results for a query.  
+
 ## [0.5.0] - 2025-12-21
 
 ### 💥 Breaking Changes
