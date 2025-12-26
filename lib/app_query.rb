@@ -72,8 +72,8 @@ module AppQuery
 
   # Loads a query from a file in the configured query path.
   #
-  # When no extension is provided, tries `.sql` first, then `.sql.erb`.
-  # Raises an error if both files exist (ambiguous).
+  # When no extension is provided, looks up via {.queries}.
+  # Raises an error if both `.sql` and `.sql.erb` exist (ambiguous).
   #
   # @param query_name [String, Symbol] the query name or path (without extension)
   # @param opts [Hash] additional options passed to {Q#initialize}
@@ -93,24 +93,30 @@ module AppQuery
   #
   # @raise [Error] if both `.sql` and `.sql.erb` files exist for the same name
   def self.[](query_name, **opts)
-    base = Pathname.new(configuration.query_path) / query_name.to_s
+    name = query_name.to_s
 
-    full_path = if File.extname(query_name.to_s).empty?
-      sql_path = base.sub_ext(".sql").expand_path
-      erb_path = base.sub_ext(".sql.erb").expand_path
-      sql_exists = sql_path.exist?
-      erb_exists = erb_path.exist?
-
-      if sql_exists && erb_exists
-        raise Error, "Ambiguous query name #{query_name.inspect}: both #{sql_path} and #{erb_path} exist"
-      end
-
-      sql_exists ? sql_path : erb_path
-    else
-      base.expand_path
+    # If extension provided, use direct path
+    if File.extname(name).present?
+      full_path = (Pathname.new(configuration.query_path) / name).expand_path
+      return Q.new(full_path.read, name: "AppQuery #{query_name}", filename: full_path.to_s, **opts)
     end
 
-    Q.new(full_path.read, name: "AppQuery #{query_name}", filename: full_path.to_s, **opts)
+    # Find matching queries by name
+    matches = queries.select { |q| q[:name] == name }
+
+    if matches.size > 1
+      paths = matches.map { |q| q[:path] }.join(" and ")
+      raise Error, "Ambiguous query name #{query_name.inspect}: both #{paths} exist"
+    end
+
+    if matches.empty?
+      # Let it fail with Errno::ENOENT for the expected .sql path
+      full_path = (Pathname.new(configuration.query_path) / "#{name}.sql").expand_path
+      full_path.read
+    end
+
+    match = matches.first
+    Q.new(File.read(match[:path]), name: "AppQuery #{query_name}", filename: match[:path], **opts)
   end
 
   # Lists all available queries in the configured query path.
