@@ -174,8 +174,8 @@ class RecentArticlesQuery < ApplicationQuery
   cast tags: :json
   per_page 10
 
-  def self.build(tag: nil, page: nil)
-    new(tag:).paginate(page: page.presence || 1)
+  def self.build(tag: nil, page: 1)
+    new(tag:).paginate(page:)
   end
 end
 
@@ -191,8 +191,8 @@ AppQuery.configure { |c| c.query_path = File.join(ROOT, "queries") }
 
 # Handle --console flag
 if ARGV.delete("--console")
-  def recent_articles
-    AppQuery[:recent_articles]
+  def recent_articles(...)
+    RecentArticlesQuery.build(...)
   end
   require "irb"
   puts "Available helper methods: [recent_articles]"
@@ -210,7 +210,7 @@ end
 class ArticlesController < ActionController::Base
   def index
     @tag = params[:tag]
-    @page = params[:page]
+    @page = params.fetch(:page, 1)
     @query = RecentArticlesQuery.build(tag: @tag, page: @page)
     @articles = @query.entries
 
