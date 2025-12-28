@@ -108,7 +108,7 @@ class BaseQuery
     end
   end
 
-  delegate :select_all, :entries, :select_one, :count, :to_s, to: :query
+  delegate :select_all, :entries, :select_one, :count, :to_s, :column, :first, :ids, to: :query
 
   def query
     @query ||= base_query
