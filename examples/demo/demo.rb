@@ -108,21 +108,7 @@ class BaseQuery
     end
   end
 
-  def select_all
-    query.select_all
-  end
-
-  def select_one
-    query.select_one
-  end
-
-  def count
-    query.count
-  end
-
-  def to_sql
-    query.to_s
-  end
+  delegate :select_all, :entries, :select_one, :count, :to_s, to: :query
 
   def query
     @query ||= base_query
