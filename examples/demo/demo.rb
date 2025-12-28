@@ -173,6 +173,10 @@ class RecentArticlesQuery < ApplicationQuery
 
   cast tags: :json
   per_page 10
+
+  def self.build(tag: nil, page: nil)
+    new(tag:).paginate(page: page.presence || 1)
+  end
 end
 
 # Handle --seed flag
@@ -206,9 +210,9 @@ end
 class ArticlesController < ActionController::Base
   def index
     @tag = params[:tag]
-    @page = (params[:page] || 1).to_i
-    @query = recent_articles(tag: @tag).paginate(page: @page)
-    @articles = @query.select_all
+    @page = params[:page]
+    @query = RecentArticlesQuery.build(tag: @tag, page: @page)
+    @articles = @query.entries
 
     render inline: <<~ERB
       <!DOCTYPE html>
@@ -247,12 +251,6 @@ class ArticlesController < ActionController::Base
       </body>
       </html>
     ERB
-  end
-
-  private
-
-  def recent_articles(tag: nil)
-    RecentArticlesQuery.new(tag:)
   end
 end
 
