@@ -38,21 +38,23 @@ It demonstrates how to use AppQuery to iterate on developing a query and explore
   
   ```ruby
   since = Date.parse("2020-1-1")
-  recent_articles.with_binds(since:).select_value(select: "select * from settings")
+  recent_articles.with_binds(since:).select_value("select * from settings")
   ```
   </details>
 - <details>
   <summary>how many unique tags exist?</summary>
   
   ```ruby
-  recent_articles.select_value(select: "select count(*) from tags")
+  recent_articles.select_value("select count(*) from tags")
+  # or 
+  recent_articles.count
   ```
   </details>
 - <details>
   <summary>list all titles</summary>
   
   ```ruby
-  recent_articles.select_all(select: "select title from _").entries
+  recent_articles.select_all("select title from :_").entries
   # or
   recent_articles.select_all.column("title")
   ```
