@@ -220,7 +220,9 @@ end
 class ArticlesController < ActionController::Base
   def index
     @tag = params[:tag]
-    @articles = recent_articles(tag: @tag).select_all
+    @page = (params[:page] || 1).to_i
+    @query = recent_articles(tag: @tag).paginate(page: @page)
+    @articles = @query.select_all
 
     render inline: <<~ERB
       <!DOCTYPE html>
@@ -247,6 +249,15 @@ class ArticlesController < ActionController::Base
           </li>
         <% end %>
         </ul>
+        <div class="pagination">
+          <% if @page > 1 %>
+            <a href="?<%= request.params.slice(:page, :tag).merge(page: @page - 1).to_query %>">← Previous</a>
+          <% end %>
+          <span>Page <%= @page %></span>
+          <% if @articles.size == @query.class.per_page %>
+            <a href="?<%= request.params.slice(:page, :tag).merge(page: @page + 1).to_query %>">Next →</a>
+          <% end %>
+        </div>
       </body>
       </html>
     ERB
@@ -317,3 +328,13 @@ li a.title:hover { text-decoration: underline; }
   margin-right: 0.25rem;
 }
 .tag:hover { background: #c00; color: white; }
+.pagination {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+.pagination a { color: #0066cc; text-decoration: none; }
+.pagination a:hover { text-decoration: underline; }
