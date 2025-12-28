@@ -218,7 +218,7 @@ class ArticlesController < ActionController::Base
         <link rel="stylesheet" href="/style.css">
       </head>
       <body>
-        <h1>Recent Articles</h1>
+        <h1><a href="/">Recent Articles</a></h1>
         <% if @tag %>
           <p class="filter">Filtering by tag: <strong><%= @tag %></strong> &mdash; <a href="/">clear filter</a></p>
         <% end %>
@@ -279,6 +279,7 @@ body {
   color: #333;
 }
 h1 { color: #c00; margin-bottom: 0.5rem; }
+h1 a, h1 a:visited { color: inherit; text-decoration: none; }
 .filter {
   background: #f5f5f5;
   padding: 0.75rem 1rem;
