@@ -69,32 +69,29 @@ class Tag < ActiveRecord::Base
   has_and_belongs_to_many :articles
 end
 
-class ApplicationQuery
+class BaseQuery
+  class_attribute :_binds, default: {}
+  class_attribute :_vars, default: {}
+  class_attribute :_casts, default: {}
+
   class << self
     def bind(name, default: nil)
-      @binds ||= {}
-      @binds[name] = { default: }
+      self._binds = _binds.merge(name => { default: })
       attr_reader name
     end
 
     def var(name, default: nil)
-      @vars ||= {}
-      @vars[name] = { default: }
+      self._vars = _vars.merge(name => { default: })
       attr_reader name
     end
 
     def cast(casts = nil)
-      return @casts || {} if casts.nil?
-      @casts = casts
+      return _casts if casts.nil?
+      self._casts = casts
     end
 
-    def binds
-      @binds || {}
-    end
-
-    def vars
-      @vars || {}
-    end
+    def binds = _binds
+    def vars = _vars
   end
 
   def initialize(**params)
@@ -105,7 +102,7 @@ class ApplicationQuery
     self.class.binds.merge(self.class.vars).each do |name, options|
       value = params.fetch(name) {
         default = options[:default]
-        default.is_a?(Proc) ? default.call : default
+        default.is_a?(Proc) ? instance_exec(&default) : default
       }
       instance_variable_set(:"@#{name}", value)
     end
@@ -152,11 +149,44 @@ class ApplicationQuery
   end
 end
 
+module Paginate
+  extend ActiveSupport::Concern
+
+  included do
+    var :page, default: nil
+    var :per_page, default: -> { self.class.per_page }
+  end
+
+  class_methods do
+    def per_page(value = nil)
+      if value.nil?
+        return @per_page if defined?(@per_page)
+        superclass.respond_to?(:per_page) ? superclass.per_page : 25
+      else
+        @per_page = value
+      end
+    end
+  end
+
+  def paginate(page: 1, per_page: self.class.per_page)
+    @page = page
+    @per_page = per_page
+    self
+  end
+end
+
+class ApplicationQuery < BaseQuery
+  include Paginate
+
+  per_page 50
+end
+
 class RecentArticlesQuery < ApplicationQuery
   bind :since, default: 0
   bind :tag
 
   cast tags: :json
+  per_page 10
 end
 
 # Handle --seed flag
