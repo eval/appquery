@@ -69,6 +69,96 @@ class Tag < ActiveRecord::Base
   has_and_belongs_to_many :articles
 end
 
+class ApplicationQuery
+  class << self
+    def bind(name, default: nil)
+      @binds ||= {}
+      @binds[name] = { default: }
+      attr_reader name
+    end
+
+    def var(name, default: nil)
+      @vars ||= {}
+      @vars[name] = { default: }
+      attr_reader name
+    end
+
+    def cast(casts = nil)
+      return @casts || {} if casts.nil?
+      @casts = casts
+    end
+
+    def binds
+      @binds || {}
+    end
+
+    def vars
+      @vars || {}
+    end
+  end
+
+  def initialize(**params)
+    all_known = self.class.binds.keys + self.class.vars.keys
+    unknown = params.keys - all_known
+    raise ArgumentError, "Unknown param(s): #{unknown.join(", ")}" if unknown.any?
+
+    self.class.binds.merge(self.class.vars).each do |name, options|
+      value = params.fetch(name) {
+        default = options[:default]
+        default.is_a?(Proc) ? default.call : default
+      }
+      instance_variable_set(:"@#{name}", value)
+    end
+  end
+
+  def select_all
+    query.select_all
+  end
+
+  def select_one
+    query.select_one
+  end
+
+  def count
+    query.count
+  end
+
+  def to_sql
+    query.to_s
+  end
+
+  def query
+    @query ||= base_query
+      .render(**render_vars)
+      .with_binds(**bind_vars)
+  end
+
+  def base_query
+    AppQuery[query_name, cast: self.class.cast]
+  end
+
+  private
+
+  def query_name
+    self.class.name.underscore.sub(/_query$/, "")
+  end
+
+  def render_vars
+    self.class.vars.keys.to_h { [_1, send(_1)] }
+  end
+
+  def bind_vars
+    self.class.binds.keys.to_h { [_1, send(_1)] }
+  end
+end
+
+class RecentArticlesQuery < ApplicationQuery
+  bind :since, default: 0
+  bind :tag
+
+  cast tags: :json
+end
+
 # Handle --seed flag
 if ARGV.delete("--seed")
   load File.join(ROOT, "db/seeds.rb")
@@ -100,7 +190,7 @@ end
 class ArticlesController < ActionController::Base
   def index
     @tag = params[:tag]
-    @articles = recent_articles.entries(binds: {since: 0, tag: @tag})
+    @articles = recent_articles(tag: @tag).select_all
 
     render inline: <<~ERB
       <!DOCTYPE html>
@@ -134,8 +224,8 @@ class ArticlesController < ActionController::Base
 
   private
 
-  def recent_articles
-    AppQuery[:recent_articles, cast: {"tags" => ActiveRecord::Type::Json.new}]
+  def recent_articles(tag: nil)
+    RecentArticlesQuery.new(tag:)
   end
 end
 
