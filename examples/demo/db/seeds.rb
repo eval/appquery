@@ -49,9 +49,24 @@ Nokogiri::HTML(URI.open("https://rubyonrails.org/category/releases")).then do |d
       _, tags, url, published_on = p [title, tags(title), url(post), publish_date(post)]
       # next unless tags.any?
       next if published_on.in?(%w[2006-4-19 2006-5-15]) # not Rails releases
+      tags << "releases"
       tags = tags.map { Tag.find_or_create_by!(name: _1) }
 
       Article.find_or_create_by!(id: ix.next).update(title:, url:, published_on:, tags: tags)
+    end
+  end
+end
+
+Nokogiri::HTML(URI.open("https://rubyonrails.org/category/news")).then do |doc|
+  doc.css("body > div > div.blog.common-padding--bottom > div > div > li.blog__post").then do |posts|
+    posts.reverse.each_with_index do |post, ix|
+      title = title(post)
+
+      _, url, published_on = p [title, url(post), publish_date(post)]
+      # next unless tags.any?
+      tags = %w[news].map { Tag.find_or_create_by!(name: _1) }
+
+      Article.find_or_create_by!(id: 1000 + ix.next).update(title:, url:, published_on:, tags: tags)
     end
   end
 end

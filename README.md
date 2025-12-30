@@ -73,7 +73,7 @@ The prompt indicates what adapter the example uses:
 
 ```ruby
 # showing select_(all|one|value)
-[postgresql]> AppQuery(%{select date('now') as today}).select_all.to_a
+[postgresql]> AppQuery(%{select date('now') as today}).select_all.entries
 => [{"today" => "2025-05-10"}]
 [postgresql]> AppQuery(%{select date('now') as today}).select_one
 => {"today" => "2025-05-10"}
@@ -85,18 +85,20 @@ The prompt indicates what adapter the example uses:
 [postgresql]> AppQuery(%{select now() - (:interval)::interval as date}).select_value(binds: {interval: '2 days'})
 
 ## not all binds need to be provided (ie they are nil by default) - so defaults can be added in SQL:
-[postgresql]> AppQuery(<<~SQL).select_all(binds: {ts1: 2.day.ago, ts2: Time.now}).column("series")
-  SELECT
-    generate_series(:ts1::timestamp, COALESCE(:ts2, :ts2::timestamp, COALESCE(:interval, '5 minutes')::interval)
-    AS series
-SQL
+[postgresql]> AppQuery(<<~SQL).select_all(binds: {ts1: 2.days.ago, ts2: Time.now, interval: '1 hour'}).column("series")
+    SELECT generate_series(
+      :ts1::timestamp,
+      :ts2::timestamp,
+      COALESCE(:interval, '5 minutes')::interval
+    ) AS series
+  SQL
 
-# ing
+# casting
 ## Cast values are used by default:
-[postgresql]> AppQuery(%{select date('now')}).select_first
+[postgresql]> AppQuery(%{select date('now')}).select_one
 => {"today" => Sat, 10 May 2025}
 ## compare ActiveRecord
-[postgresql]> ActiveRecord::Base.connection.select_first(%{select date('now') as today})
+[postgresql]> ActiveRecord::Base.connection.select_one(%{select date('now') as today})
 => {"today" => "2025-12-20"}
 
 ## SQLite doesn't have a notion of dates or timestamp's so casting won't do anything:
@@ -120,7 +122,7 @@ cast = {today: :date}
 SQL
 
 ## query the articles-CTE
-[postgresql]> q.select_all(%{select * from articles where id < 2}).to_a
+[postgresql]> q.select_all(%{select * from articles where id::integer < 2}).entries
 
 ## query the end-result (available via the placeholder ':_')
 [postgresql]> q.select_one(%{select * from :_ limit 1})

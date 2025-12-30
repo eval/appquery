@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "app_query/version"
+require_relative "app_query/base_query"
+require_relative "app_query/paginatable"
+require_relative "app_query/mappable"
 require_relative "app_query/tokenizer"
 require_relative "app_query/render_helpers"
 require "active_record"
@@ -147,6 +150,20 @@ module AppQuery
     end
 
     public
+
+    # Transforms each record in-place using the provided block.
+    #
+    # @yield [Hash] each record as a hash with indifferent access
+    # @yieldreturn [Hash] the transformed record
+    # @return [self] the result object for chaining
+    #
+    # @example Add a computed field
+    #   result = AppQuery[:users].select_all
+    #   result.transform! { |r| r.merge("full_name" => "#{r['first']} #{r['last']}") }
+    def transform!
+      @hash_rows = hash_rows.map { |r| yield(r) }
+      self
+    end
 
     # Resolves a cast type value, converting symbols to ActiveRecord types.
     #
