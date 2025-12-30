@@ -210,7 +210,7 @@ end
 class ArticlesController < ActionController::Base
   def index
     @tag = params[:tag]
-    @page = params.fetch(:page, 1)
+    @page = params.fetch(:page, 1).to_i
     @query = RecentArticlesQuery.build(tag: @tag, page: @page)
     @articles = @query.entries
 
@@ -229,7 +229,7 @@ class ArticlesController < ActionController::Base
         <ul>
         <% @articles.each do |a| %>
           <li>
-            <a class="title" href="<%= a["url"] %>"><%= a["title"] %></a>
+            <a class="title" href="<%= a["url"] %>" target="_open"><%= a["title"] %></a>
             <span class="date"><%= a["published_on"] %></span>
             <div class="tags">
               <% a["tags"]&.each do |tag| %>
