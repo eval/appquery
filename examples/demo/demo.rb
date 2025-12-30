@@ -133,9 +133,11 @@ class ArticlesController < ActionController::Base
   include Rails.application.routes.url_helpers
 
   def index
-    @tag = params[:tag]
-    @page = params.fetch(:page, 1).to_i
-    @articles = RecentArticlesQuery.build(tag: @tag, page: @page, without_count: false).entries
+    @articles = RecentArticlesQuery.build(
+      page: params.fetch(:page, 1).to_i,
+      tag: params[:tag],
+      without_count: false
+    ).entries
 
     render inline: <<~ERB
       <!DOCTYPE html>
