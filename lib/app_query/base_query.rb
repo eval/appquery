@@ -83,23 +83,55 @@ module AppQuery
     class_attribute :_casts, default: {}
 
     class << self
+      # Declares a bind parameter for the query.
+      #
+      # Bind parameters are passed to the database driver and are safe from
+      # SQL injection. Use for values in WHERE, HAVING, etc.
+      #
+      # @param name [Symbol] parameter name (used as :name in SQL)
+      # @param default [Object, Proc] default value (Proc is evaluated at instantiation)
+      #
+      # @example
+      #   bind :user_id
+      #   bind :status, default: "active"
+      #   bind :since, default: -> { 1.week.ago }
       def bind(name, default: nil)
         self._binds = _binds.merge(name => {default:})
         attr_reader name
       end
 
+      # Declares a template variable for the query.
+      #
+      # Vars are available in ERB as both local variables and instance variables
+      # (@var). Use for dynamic SQL generation (ORDER BY, column selection, etc.)
+      #
+      # @param name [Symbol] variable name
+      # @param default [Object, Proc] default value (Proc is evaluated at instantiation)
+      #
+      # @example
+      #   var :order_by, default: "created_at DESC"
+      #   var :columns, default: "*"
       def var(name, default: nil)
         self._vars = _vars.merge(name => {default:})
         attr_reader name
       end
 
+      # Sets type casting for result columns.
+      #
+      # @param casts [Hash{Symbol => Symbol}] column name to type mapping
+      # @return [Hash] current cast configuration when called without arguments
+      #
+      # @example
+      #   cast published_at: :datetime, metadata: :json
       def cast(casts = nil)
         return _casts if casts.nil?
         self._casts = casts
       end
 
+      # @return [Hash] declared bind parameters with their options
       def binds = _binds
 
+      # @return [Hash] declared template variables with their options
       def vars = _vars
     end
 
