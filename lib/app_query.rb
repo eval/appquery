@@ -148,6 +148,20 @@ module AppQuery
 
     public
 
+    # Transforms each record in-place using the provided block.
+    #
+    # @yield [Hash] each record as a hash with indifferent access
+    # @yieldreturn [Hash] the transformed record
+    # @return [self] the result object for chaining
+    #
+    # @example Add a computed field
+    #   result = AppQuery[:users].select_all
+    #   result.transform! { |r| r.merge("full_name" => "#{r['first']} #{r['last']}") }
+    def transform!
+      @hash_rows = hash_rows.map { |r| yield(r) }
+      self
+    end
+
     # Resolves a cast type value, converting symbols to ActiveRecord types.
     #
     # @param value [Symbol, Object] the cast type (symbol shorthand or type instance)

@@ -109,7 +109,11 @@ class BaseQuery
     end
   end
 
-  delegate :select_all, :entries, :select_one, :count, :to_s, :column, :first, :ids, to: :query
+  delegate :select_all, :select_one, :count, :to_s, :column, :first, :ids, to: :query
+
+  def entries
+    select_all
+  end
 
   def query
     @query ||= base_query
@@ -133,6 +137,59 @@ class BaseQuery
 
   def bind_vars
     self.class.binds.keys.to_h { [_1, send(_1)] }
+  end
+end
+
+module Mappable
+  extend ActiveSupport::Concern
+
+  class_methods do
+    def map_to(name = nil)
+      name ? @map_to = name : @map_to
+    end
+  end
+
+  def raw
+    @raw = true
+    self
+  end
+
+  def select_all
+    map_result(super)
+  end
+
+  def select_one
+    map_one(super)
+  end
+
+  private
+
+  def map_result(result)
+    return result if @raw
+    return result unless (klass = resolve_map_klass)
+
+    attrs = klass.members
+    result.transform! { |row| klass.new(**row.symbolize_keys.slice(*attrs)) }
+  end
+
+  def map_one(result)
+    return result if @raw
+    return result unless (klass = resolve_map_klass)
+    return result unless result
+
+    attrs = klass.members
+    klass.new(**result.symbolize_keys.slice(*attrs))
+  end
+
+  def resolve_map_klass
+    case (name = self.class.map_to)
+    when Symbol
+      self.class.const_get(name.to_s.classify)
+    when Class
+      name
+    when nil
+      self.class.const_get(:Item) if self.class.const_defined?(:Item)
+    end
   end
 end
 
@@ -184,7 +241,13 @@ module Paginate
     def out_of_range?
       empty? && @page > 1
     end
+
+    def transform!
+      @records = @records.map { |r| yield(r) }
+      self
+    end
   end
+
 
   included do
     var :page, default: nil
@@ -254,6 +317,19 @@ class ApplicationQuery < BaseQuery
 end
 
 class RecentArticlesQuery < ApplicationQuery
+  include Mappable
+
+  class Item < Data.define(
+    :published_on,
+    :tags,
+    :title,
+    :url,
+  )
+    def initialize(tags: [], **)
+      super
+    end
+  end
+
   bind :since, default: 0
   bind :tag
 
@@ -325,10 +401,10 @@ class ArticlesController < ActionController::Base
         <ul>
         <% @articles.each do |a| %>
           <li>
-            <a class="title" href="<%= a["url"] %>" target="_open"><%= a["title"] %></a>
-            <span class="date"><%= a["published_on"] %></span>
+            <a class="title" href="<%= a.url %>" target="_open"><%= a.title %></a>
+            <span class="date"><%= a.published_on %></span>
             <div class="tags">
-              <% a["tags"]&.each do |tag| %>
+              <% a.tags.each do |tag| %>
                 <a class="tag" href="?tag=<%= CGI.escape(tag) %>"><%= tag %></a>
               <% end %>
             </div>
