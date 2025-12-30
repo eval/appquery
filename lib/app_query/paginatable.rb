@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "active_support/concern"
+
 module AppQuery
   # Adds pagination support to query classes.
   #
@@ -33,6 +35,7 @@ module AppQuery
     # Kaminari-compatible wrapper for paginated results.
     class PaginatedResult
       include Enumerable
+
       delegate :each, :size, :[], :empty?, :first, :last, to: :@records
 
       def initialize(records, page:, per_page:, total_count: nil, has_next: nil)
@@ -44,8 +47,11 @@ module AppQuery
       end
 
       def current_page = @page
+
       def limit_value = @per_page
-      def prev_page = @page > 1 ? @page - 1 : nil
+
+      def prev_page = (@page > 1) ? @page - 1 : nil
+
       def first_page? = @page == 1
 
       def total_count
@@ -59,7 +65,7 @@ module AppQuery
 
       def next_page
         if @total_count
-          @page < total_pages ? @page + 1 : nil
+          (@page < total_pages) ? @page + 1 : nil
         else
           @has_next ? @page + 1 : nil
         end

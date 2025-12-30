@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "active_support/concern"
+
 module AppQuery
   # Maps query results to Ruby objects (e.g., Data classes, Structs).
   #
