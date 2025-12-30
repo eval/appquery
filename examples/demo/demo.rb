@@ -70,254 +70,14 @@ class Tag < ActiveRecord::Base
   has_and_belongs_to_many :articles
 end
 
-class BaseQuery
-  class_attribute :_binds, default: {}
-  class_attribute :_vars, default: {}
-  class_attribute :_casts, default: {}
-
-  class << self
-    def bind(name, default: nil)
-      self._binds = _binds.merge(name => { default: })
-      attr_reader name
-    end
-
-    def var(name, default: nil)
-      self._vars = _vars.merge(name => { default: })
-      attr_reader name
-    end
-
-    def cast(casts = nil)
-      return _casts if casts.nil?
-      self._casts = casts
-    end
-
-    def binds = _binds
-    def vars = _vars
-  end
-
-  def initialize(**params)
-    all_known = self.class.binds.keys + self.class.vars.keys
-    unknown = params.keys - all_known
-    raise ArgumentError, "Unknown param(s): #{unknown.join(", ")}" if unknown.any?
-
-    self.class.binds.merge(self.class.vars).each do |name, options|
-      value = params.fetch(name) {
-        default = options[:default]
-        default.is_a?(Proc) ? instance_exec(&default) : default
-      }
-      instance_variable_set(:"@#{name}", value)
-    end
-  end
-
-  delegate :select_all, :select_one, :count, :to_s, :column, :first, :ids, to: :query
-
-  def entries
-    select_all
-  end
-
-  def query
-    @query ||= base_query
-      .render(**render_vars)
-      .with_binds(**bind_vars)
-  end
-
-  def base_query
-    AppQuery[query_name, cast: self.class.cast]
-  end
-
-  private
-
-  def query_name
-    self.class.name.underscore.sub(/_query$/, "")
-  end
-
-  def render_vars
-    self.class.vars.keys.to_h { [_1, send(_1)] }
-  end
-
-  def bind_vars
-    self.class.binds.keys.to_h { [_1, send(_1)] }
-  end
-end
-
-module Mappable
-  extend ActiveSupport::Concern
-
-  class_methods do
-    def map_to(name = nil)
-      name ? @map_to = name : @map_to
-    end
-  end
-
-  def raw
-    @raw = true
-    self
-  end
-
-  def select_all
-    map_result(super)
-  end
-
-  def select_one
-    map_one(super)
-  end
-
-  private
-
-  def map_result(result)
-    return result if @raw
-    return result unless (klass = resolve_map_klass)
-
-    attrs = klass.members
-    result.transform! { |row| klass.new(**row.symbolize_keys.slice(*attrs)) }
-  end
-
-  def map_one(result)
-    return result if @raw
-    return result unless (klass = resolve_map_klass)
-    return result unless result
-
-    attrs = klass.members
-    klass.new(**result.symbolize_keys.slice(*attrs))
-  end
-
-  def resolve_map_klass
-    case (name = self.class.map_to)
-    when Symbol
-      self.class.const_get(name.to_s.classify)
-    when Class
-      name
-    when nil
-      self.class.const_get(:Item) if self.class.const_defined?(:Item)
-    end
-  end
-end
-
-module Paginate
-  extend ActiveSupport::Concern
-
-  class PaginatedResult
-    include Enumerable
-    delegate :each, :size, :[], :empty?, :first, :last, to: :@records
-
-    def initialize(records, page:, per_page:, total_count: nil, has_next: nil)
-      @records = records
-      @page = page
-      @per_page = per_page
-      @total_count = total_count
-      @has_next = has_next
-    end
-
-    def current_page = @page
-    def limit_value = @per_page
-    def prev_page = @page > 1 ? @page - 1 : nil
-    def first_page? = @page == 1
-
-    def total_count
-      @total_count || raise("total_count not available in without_count mode")
-    end
-
-    def total_pages
-      return nil unless @total_count
-      (@total_count.to_f / @per_page).ceil
-    end
-
-    def next_page
-      if @total_count
-        @page < total_pages ? @page + 1 : nil
-      else
-        @has_next ? @page + 1 : nil
-      end
-    end
-
-    def last_page?
-      if @total_count
-        @page >= total_pages
-      else
-        !@has_next
-      end
-    end
-
-    def out_of_range?
-      empty? && @page > 1
-    end
-
-    def transform!
-      @records = @records.map { |r| yield(r) }
-      self
-    end
-  end
-
-
-  included do
-    var :page, default: nil
-    var :per_page, default: -> { self.class.per_page }
-  end
-
-  class_methods do
-    def per_page(value = nil)
-      if value.nil?
-        return @per_page if defined?(@per_page)
-        superclass.respond_to?(:per_page) ? superclass.per_page : 25
-      else
-        @per_page = value
-      end
-    end
-  end
-
-  def paginate(page: 1, per_page: self.class.per_page, without_count: false)
-    @page = page
-    @per_page = per_page
-    @without_count = without_count
-    self
-  end
-
-  def entries
-    @_entries ||= build_paginated_result(super)
-  end
-
-  def total_count
-    @_total_count ||= unpaginated_query.count
-  end
-
-  def unpaginated_query
-    base_query
-      .render(**render_vars.except(:page, :per_page))
-      .with_binds(**bind_vars)
-  end
-
-  private
-
-  def build_paginated_result(entries)
-    return entries unless @page  # No pagination requested
-
-    if @without_count
-      has_next = entries.size > @per_page
-      records = has_next ? entries.first(@per_page) : entries
-      PaginatedResult.new(records, page: @page, per_page: @per_page, has_next: has_next)
-    else
-      PaginatedResult.new(entries, page: @page, per_page: @per_page, total_count: total_count)
-    end
-  end
-
-  def render_vars
-    vars = super
-    # Fetch one extra row in without_count mode to detect if there's more
-    if @without_count && vars[:per_page]
-      vars = vars.merge(per_page: vars[:per_page] + 1)
-    end
-    vars
-  end
-end
-
-class ApplicationQuery < BaseQuery
-  include Paginate
+class ApplicationQuery < AppQuery::BaseQuery
+  include AppQuery::Paginatable
 
   per_page 50
 end
 
 class RecentArticlesQuery < ApplicationQuery
-  include Mappable
+  include AppQuery::Mappable
 
   class Item < Data.define(
     :published_on,
@@ -330,7 +90,7 @@ class RecentArticlesQuery < ApplicationQuery
     end
   end
 
-  bind :since, default: 0
+  bind :since, default: 0 # since forever
   bind :tag
 
   cast tags: :json
@@ -375,8 +135,7 @@ class ArticlesController < ActionController::Base
   def index
     @tag = params[:tag]
     @page = params.fetch(:page, 1).to_i
-    @query = RecentArticlesQuery.build(tag: @tag, page: @page, without_count: true)
-    @articles = @query.entries
+    @articles = RecentArticlesQuery.build(tag: @tag, page: @page, without_count: false).entries
 
     render inline: <<~ERB
       <!DOCTYPE html>
@@ -401,7 +160,9 @@ class ArticlesController < ActionController::Base
         <ul>
         <% @articles.each do |a| %>
           <li>
-            <a class="title" href="<%= a.url %>" target="_open"><%= a.title %></a>
+            <a class="title" href="<%= a.url %>" target="_open">
+              <%= a.title %>
+            </a>
             <span class="date"><%= a.published_on %></span>
             <div class="tags">
               <% a.tags.each do |tag| %>

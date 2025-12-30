@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "app_query/version"
+require_relative "app_query/base_query"
+require_relative "app_query/paginatable"
+require_relative "app_query/mappable"
 require_relative "app_query/tokenizer"
 require_relative "app_query/render_helpers"
 require "active_record"
