@@ -2,6 +2,63 @@
 
 ### ✨ Features
 
+- 🏗️ **`AppQuery::BaseQuery`** — structured query objects with explicit parameter declaration
+  ```ruby
+  class ArticlesQuery < AppQuery::BaseQuery
+    bind :author_id
+    bind :status, default: nil
+    var :order_by, default: "created_at DESC"
+    cast published_at: :datetime
+  end
+
+  ArticlesQuery.new(author_id: 1).entries
+  ArticlesQuery.new(author_id: 1, status: "draft").first
+  ```
+  Benefits over `AppQuery[:my_query]`:
+  - Explicit `bind` and `var` declarations with defaults
+  - Unknown parameter validation (catches typos)
+  - Self-documenting: `ArticlesQuery.binds`, `ArticlesQuery.vars`
+  - Middleware support via concerns
+
+- 📄 **`AppQuery::Paginatable`** — pagination middleware (Kaminari-compatible)
+  ```ruby
+  class ApplicationQuery < AppQuery::BaseQuery
+    include AppQuery::Paginatable
+    per_page 25
+  end
+
+  # With count (full pagination)
+  articles = ArticlesQuery.new.paginate(page: 1).entries
+  articles.total_pages  # => 5
+
+  # Without count (large datasets, uses limit+1 trick)
+  articles = ArticlesQuery.new.paginate(page: 1, without_count: true).entries
+  articles.next_page    # => 2 or nil
+  ```
+
+- 🗺️ **`AppQuery::Mappable`** — map results to Ruby objects
+  ```ruby
+  class ArticlesQuery < ApplicationQuery
+    include AppQuery::Mappable
+
+    class Item < Data.define(:title, :url, :published_on)
+    end
+  end
+
+  articles = ArticlesQuery.new.entries
+  articles.first.title  # => "Hello World"
+  articles.first.class  # => ArticlesQuery::Item
+
+  # Skip mapping
+  ArticlesQuery.new.raw.entries.first  # => {"title" => "Hello", ...}
+  ```
+
+- 🔄 **`Result#transform!`** — transform result records in-place
+  ```ruby
+  result = AppQuery[:users].select_all
+  result.transform! { |row| row.merge("full_name" => "#{row['first']} #{row['last']}") }
+  ```
+
 - Add `any?`, `none?` - efficient ways to see if there's any results for a query.
 - 🎯 **Cast type shorthands** — use symbols instead of explicit type classes
   ```ruby
