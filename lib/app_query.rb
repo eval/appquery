@@ -161,7 +161,7 @@ module AppQuery
     #   result = AppQuery[:users].select_all
     #   result.transform! { |r| r.merge("full_name" => "#{r['first']} #{r['last']}") }
     def transform!
-      @hash_rows = hash_rows.map { |r| yield(r) }
+      @hash_rows = hash_rows.map { |r| yield(r) } unless empty?
       self
     end
 
