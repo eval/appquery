@@ -14,4 +14,7 @@ task default: %i[spec standard]
 if ENV["CI"]
   Rake::Task["release:guard_clean"].clear
   task "release:guard_clean"
+
+  Rake::Task["release:source_control_push"].clear
+  task "release:source_control_push"
 end
