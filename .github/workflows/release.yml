@@ -38,7 +38,7 @@ jobs:
           # halts subsequent rake tasks when in frozen mode
           bundle config set frozen false
           bin/rake gem:write_version[${{ github.ref_name }}]
-      - uses: rubygems/release-gem@a25424ba2ba8b387abc8ef40807c2c85b96cbe32 # v1
+      - uses: rubygems/release-gem@1c162a739e8b4cb21a676e97b087e8268d8fc40b # v1.1.2
       - name: Create GitHub release
         run: |
           dot_count=$(echo ${{ github.ref_name }} | tr -cd '.' | wc -c)
