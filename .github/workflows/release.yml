@@ -36,8 +36,8 @@ jobs:
         run: |
           # Writing version.rb changes the Gemfile.lock which
           # halts subsequent rake tasks when in frozen mode
-          #bundle config set frozen false
-          #bin/rake gem:write_version[${{ github.ref_name }}]
+          bundle config set frozen false
+          bin/rake gem:write_version[${{ github.ref_name }}]
       - uses: rubygems/release-gem@a25424ba2ba8b387abc8ef40807c2c85b96cbe32 # v1
       - name: Create GitHub release
         run: |
