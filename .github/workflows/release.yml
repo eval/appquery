@@ -45,7 +45,7 @@ jobs:
           dot_count=$(echo "$version" | tr -cd '.' | wc -c)
           anchor="${version//./}"
 
-          read -r -d '' notes <<EOF
+          read -r -d '' notes <<EOF || true
           ## ✨ AppQuery ${version}
           Ergonomic raw SQL queries for ActiveRecord.
 
