@@ -55,7 +55,7 @@ jobs:
 
           prerelease_flag=""
           if [[ "$dot_count" -gt 2 ]]; then
-            gh release create "$version" --prerelease --verify-tag --generate-notes
+            gh release create "$version" --prerelease --verify-tag --generate-notes --notes "$notes"
           else
             gh release create "$version" --verify-tag --generate-notes --notes "$notes"
           fi
