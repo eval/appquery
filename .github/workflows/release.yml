@@ -1,38 +1,65 @@
----
+name: Release gem
+
 on:
   push:
     tags:
       - '*'
 
-name: Release Gem
+permissions:
+  contents: read
+
 jobs:
   push:
+    if: github.repository == 'eval/appquery'
     runs-on: ubuntu-latest
+
     permissions:
       contents: write
       id-token: write
+
     steps:
-    - uses: rubygems/configure-rubygems-credentials@main
-      with:
-        role-to-assume: rg_oidc_akr_yomr1rao1cgw5eaq1eg2
-    - uses: actions/checkout@v4
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        bundler-cache: true
-        ruby-version: ruby
-    - name: Release
-      run: |
-        # Writing version.rb changes the Gemfile.lock which
-        # halts subsequent rake tasks when in frozen mode
-        bundle config set frozen false
-        bin/rake gem:build[${{ github.ref_name }}] gem:release
-    - name: Wait for release to propagate
-      run: |
-        gem install rubygems-await
-        gem_tuple="$(ruby -rbundler/setup -rbundler -e '
-            spec = Bundler.definition.specs.find {|s| s.name == ARGV[0] }
-            raise "No spec for #{ARGV[0]}" unless spec
-            print [spec.name, spec.version, spec.platform].join(":")
-          ' "appquery")"
-        gem await "${gem_tuple}"
+      # Set up
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@2e007403fc1ec238429ecaa57af6f22f019cc135 # v1.234.0
+        with:
+          bundler-cache: true
+          ruby-version: ruby
+
+      # Release
+      - name: Release
+        run: |
+          # Writing version.rb changes the Gemfile.lock which
+          # halts subsequent rake tasks when in frozen mode
+          bundle config set frozen false
+          bin/rake gem:write_version[${{ github.ref_name }}]
+      - uses: rubygems/release-gem@1c162a739e8b4cb21a676e97b087e8268d8fc40b # v1.1.2
+      - name: Create GitHub release
+        run: |
+          version="${{ github.ref_name }}"
+          dot_count=$(echo "$version" | tr -cd '.' | wc -c)
+          anchor="${version//./}"
+
+          read -r -d '' notes <<EOF || true
+          ## ✨ AppQuery ${version}
+          Ergonomic raw SQL queries for ActiveRecord.
+
+          **Rubygems**: https://rubygems.org/gems/appquery/versions/${version}
+          **Changelog**: https://github.com/eval/appquery/blob/main/CHANGELOG.md#${anchor}
+          EOF
+
+          prerelease_flag=""
+          if [[ "$dot_count" -gt 2 ]]; then
+            gh release create "$version" --prerelease --verify-tag --generate-notes
+          else
+            gh release create "$version" --verify-tag --generate-notes --notes "$notes"
+          fi
+
+        env:
+          # classic token (https://github.com/settings/tokens) with repo-scope
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}

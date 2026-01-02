@@ -376,7 +376,32 @@ $ bin/run rails_head console
 
 Run `rake spec` to run the tests.
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+To install this gem onto your local machine, run `bundle exec rake install`.
+
+<!--
+## Releasing
+
+Create a signed git tag and push:
+
+```bash
+# Regular release
+git tag -s 1.2.3 -m "Release 1.2.3"
+
+# Prerelease
+git tag -s 1.2.3.rc1 -m "Release 1.2.3.rc1"
+
+# Push the tag
+git push origin --tags
+```
+
+CI will build the gem, sign it (Sigstore attestation), push to RubyGems, and create a GitHub release.
+
+After the release, update version.rb to the next dev version:
+
+```ruby
+VERSION = "1.2.4.dev"
+```
+-->
 
 ## Contributing
 

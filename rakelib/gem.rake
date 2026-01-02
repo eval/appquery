@@ -12,14 +12,4 @@ namespace :gem do
       Bundler.ui.warn "No version provided, keeping version.rb as is."
     end
   end
-
-  desc "Build [version]"
-  task "build", [:version] => %w[write_version] do
-    Rake::Task["build"].invoke
-  end
-
-  desc "Build and push [version] to rubygems"
-  task "release", [:version] => %w[build] do
-    Rake::Task["release:rubygem_push"].invoke
-  end
 end
