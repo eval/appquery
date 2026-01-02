@@ -41,9 +41,17 @@ jobs:
       - uses: rubygems/release-gem@1c162a739e8b4cb21a676e97b087e8268d8fc40b # v1.1.2
       - name: Create GitHub release
         run: |
-          dot_count=$(echo ${{ github.ref_name }} | tr -cd '.' | wc -c)
+          version="${{ github.ref_name }}"
+          dot_count=$(echo "$version" | tr -cd '.' | wc -c)
+          anchor="${version//./}"
           if [[ "$dot_count" -gt 2 ]]; then
-            gh release create ${{ github.ref_name }} --prerelease --verify-tag --generate-notes --notes "Some custom header?"
+            gh release create ${{ github.ref_name }} --prerelease --verify-tag --generate-notes --notes "$(cat <<EOF
+## ✨ AppQuery (ergonomic raw SQL queries for ActiveRecord) v0.6.0.rc5
+
+**Rubygems**: https://rubygems.org/gems/appquery/versions/${version}
+**Changelog**: https://github.com/eval/appquery/blob/main/CHANGELOG.md#${anchor}
+EOF
+  )"
           else
             gh release create ${{ github.ref_name }} --verify-tag --generate-notes --notes "Some custom header?"
           fi
