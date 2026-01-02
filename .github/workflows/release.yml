@@ -44,17 +44,22 @@ jobs:
           version="${{ github.ref_name }}"
           dot_count=$(echo "$version" | tr -cd '.' | wc -c)
           anchor="${version//./}"
-          if [[ "$dot_count" -gt 2 ]]; then
-            gh release create ${{ github.ref_name }} --prerelease --verify-tag --generate-notes --notes "$(cat <<EOF
-## ✨ AppQuery (ergonomic raw SQL queries for ActiveRecord) v0.6.0.rc5
 
-**Rubygems**: https://rubygems.org/gems/appquery/versions/${version}
-**Changelog**: https://github.com/eval/appquery/blob/main/CHANGELOG.md#${anchor}
-EOF
-  )"
+          read -r -d '' notes <<EOF
+          ## ✨ AppQuery ${version}
+          Ergonomic raw SQL queries for ActiveRecord.
+
+          **Rubygems**: https://rubygems.org/gems/appquery/versions/${version}
+          **Changelog**: https://github.com/eval/appquery/blob/main/CHANGELOG.md#${anchor}
+          EOF
+
+          prerelease_flag=""
+          if [[ "$dot_count" -gt 2 ]]; then
+            gh release create "$version" --prerelease --verify-tag --generate-notes
           else
-            gh release create ${{ github.ref_name }} --verify-tag --generate-notes --notes "Some custom header?"
+            gh release create "$version" --verify-tag --generate-notes --notes "$notes"
           fi
+
         env:
           # classic token (https://github.com/settings/tokens) with repo-scope
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
