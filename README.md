@@ -3,7 +3,7 @@
 [![Gem Version](https://badge.fury.io/rb/appquery.svg)](https://badge.fury.io/rb/appquery)
 [![API Docs](https://img.shields.io/badge/API_Docs-YARD-blue.svg)](https://eval.github.io/appquery/)
 
-A Ruby gem for working with raw SQL in Rails. Store queries in `app/queries/`, execute them with proper type casting, and filter/transform results using CTEs.
+A Ruby gem providing ergonomic raw SQL queries for ActiveRecord. Inline or stored queries in `app/queries/`, execute them with proper type casting, filter/transform results using CTEs and have parameterization via ERB.
 
 ```ruby
 # Load and execute
@@ -12,6 +12,8 @@ week.entries
 #=> [{"week" => 2025-01-13, "category" => "Electronics", "revenue" => 12500, "target_met" => true}, ...]
 
 # Filter results (query wraps in CTE, :_ references it)
+week.count
+#=> 5
 week.count("SELECT * FROM :_ WHERE NOT target_met")
 #=> 3
 
@@ -36,12 +38,14 @@ query.prepend_cte("sales AS (SELECT * FROM mock_data)")
 **Highlights**: query files with generator · `select_all`/`select_one`/`select_value`/`count`/`column`/`ids` · query transformation via CTEs · immutable (derive new queries from existing) · named binds · ERB helpers (`order_by`, `paginate`, `values`, `bind`) · automatic + custom type casting · RSpec integration
 
 > [!IMPORTANT]  
-> **Status**: alpha. API might change. See [the CHANGELOG](./CHANGELOG.md) for breaking changes when upgrading.
+> **Status**: using it in production for multiple projects, but API might change pre v1.0. See [the CHANGELOG](./CHANGELOG.md) for breaking changes when upgrading.
 >
 
 ## Rationale
 
-Sometimes ActiveRecord doesn't cut it, and you'd rather use raw SQL to get the right data out. That, however, introduces some new problems. First of all, you'll run into the not-so-intuitive use of [select_(all|one|value)](https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/DatabaseStatements.html#method-i-select_all) — for example, how they differ with respect to type casting, and how their behavior can vary between ActiveRecord versions. Then there's the testability, introspection, and maintainability of the resulting SQL queries.  
+Sometimes ActiveRecord doesn't cut it: you need performance, would rather use raw SQL instead of Arel and hash-maps are fine instead of full-fledge ActiveRecord instances.  
+That, however, introduces some new problems. First of all, you'll run into the not-so-intuitive use of [select_(all|one|value)](https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/DatabaseStatements.html#method-i-select_all) — for example, how they differ with respect to type casting, and how their behavior can vary between ActiveRecord versions. Then there's the testability, introspection, and maintainability of the resulting SQL queries.  
+
 This library aims to alleviate all of these issues by providing a consistent interface across select_* methods and ActiveRecord versions. It should make inspecting and testing queries easier—especially when they're built from CTEs.
 
 ## Installation
@@ -74,29 +78,15 @@ The prompt indicates what adapter the example uses:
 ```ruby
 # showing select_(all|one|value)
 [postgresql]> AppQuery(%{select date('now') as today}).select_all.entries
-=> [{"today" => "2025-05-10"}]
+=> [{"today" => Fri, 02 Jan 2026}]
 [postgresql]> AppQuery(%{select date('now') as today}).select_one
-=> {"today" => "2025-05-10"}
+=> {"today" => Fri, 02 Jan 2026}
 [postgresql]> AppQuery(%{select date('now') as today}).select_value
-=> "2025-05-10"
-
-# binds
-## named binds
-[postgresql]> AppQuery(%{select now() - (:interval)::interval as date}).select_value(binds: {interval: '2 days'})
-
-## not all binds need to be provided (ie they are nil by default) - so defaults can be added in SQL:
-[postgresql]> AppQuery(<<~SQL).select_all(binds: {ts1: 2.days.ago, ts2: Time.now, interval: '1 hour'}).column("series")
-    SELECT generate_series(
-      :ts1::timestamp,
-      :ts2::timestamp,
-      COALESCE(:interval, '5 minutes')::interval
-    ) AS series
-  SQL
+=> Fri, 02 Jan 2026
 
 # casting
-## Cast values are used by default:
-[postgresql]> AppQuery(%{select date('now')}).select_one
-=> {"today" => Sat, 10 May 2025}
+As can be seen from these examples, values are automatically casted.
+
 ## compare ActiveRecord
 [postgresql]> ActiveRecord::Base.connection.select_one(%{select date('now') as today})
 => {"today" => "2025-12-20"}
@@ -109,6 +99,24 @@ cast = {today: :date}
 [sqlite]> AppQuery(%{select date('now') as today}).select_one(cast:)
 => {"today" => Mon, 12 May 2025}
 
+# binds
+## named binds
+[postgresql]> AppQuery(%{select now() - (:interval)::interval as date}).select_value(binds: {interval: '2 days'})
+=> 2025-12-31 12:57:27.41132 UTC
+
+## not all binds need to be provided (ie they are nil by default) - so defaults can be added in SQL:
+[postgresql]> AppQuery(<<~SQL).select_all(binds: {ts1: 2.days.ago, ts2: Time.now, interval: '1 hour'}).column("series")
+    SELECT generate_series(
+      :ts1::timestamp,
+      :ts2::timestamp,
+      COALESCE(:interval, '5 minutes')::interval
+    ) AS series
+  SQL
+=>
+[2025-12-31 12:57:46.969709 UTC,
+ 2025-12-31 13:57:46.969709 UTC,
+ 2025-12-31 14:57:46.969709 UTC,
+ ...]
 
 # rewriting queries (using CTEs)
 [postgresql]> articles = [
@@ -378,8 +386,7 @@ Run `rake spec` to run the tests.
 
 To install this gem onto your local machine, run `bundle exec rake install`.
 
-<!--
-## Releasing
+### Releasing
 
 Create a signed git tag and push:
 
@@ -394,14 +401,13 @@ git tag -s 1.2.3.rc1 -m "Release 1.2.3.rc1"
 git push origin --tags
 ```
 
-CI will build the gem, sign it (Sigstore attestation), push to RubyGems, and create a GitHub release.
+CI will build the gem, sign it (Sigstore attestation), push to RubyGems, and create a GitHub release (see [release.yml](https://github.com/eval/appquery/blob/3ed2adfacf952acc191a21a44b7c43a375b8975b/.github/workflows/release.yml#L34)).
 
 After the release, update version.rb to the next dev version:
 
 ```ruby
 VERSION = "1.2.4.dev"
 ```
--->
 
 ## Contributing
 
