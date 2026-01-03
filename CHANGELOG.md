@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## 0.6.0
+
+**Releasedate**: 2-1-2026  
+**Rubygems**: https://rubygems.org/gems/appquery/versions/0.6.0  
+
 ### ✨ Features
 
 - 🏗️ **`AppQuery::BaseQuery`** — structured query objects with explicit parameter declaration
