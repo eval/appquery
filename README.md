@@ -85,7 +85,7 @@ The prompt indicates what adapter the example uses:
 => Fri, 02 Jan 2026
 
 # casting
-As can be seen from these examples, values are automatically casted.
+# As can be seen from these examples, values are automatically casted.
 
 ## compare ActiveRecord
 [postgresql]> ActiveRecord::Base.connection.select_one(%{select date('now') as today})
