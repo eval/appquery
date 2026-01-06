@@ -683,4 +683,86 @@ RSpec.describe AppQuery::Q do
       end
     end
   end
+
+  describe "#copy_to", :db do
+    before do
+      ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS export_test")
+      ActiveRecord::Base.connection.execute(<<~SQL)
+        CREATE TABLE export_test (id int, name text)
+      SQL
+      ActiveRecord::Base.connection.execute("INSERT INTO export_test VALUES (1, 'Alice'), (2, 'Bob')")
+    end
+
+    after do
+      ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS export_test")
+    end
+
+    it "returns CSV string when to: is nil" do
+      result = app_query("SELECT * FROM export_test ORDER BY id").copy_to(header: true)
+      expect(result).to include("id,name")
+      expect(result).to include("1,Alice")
+      expect(result).to include("2,Bob")
+    end
+
+    it "writes to file path" do
+      path = "tmp/export_test.csv"
+      bytes = app_query("SELECT * FROM export_test ORDER BY id").copy_to(to: path)
+      expect(bytes).to be > 0
+      expect(File.read(path)).to include("1,Alice")
+    ensure
+      File.delete(path) if File.exist?(path)
+    end
+
+    it "writes to IO object and returns nil" do
+      io = StringIO.new
+      result = app_query("SELECT * FROM export_test ORDER BY id").copy_to(to: io)
+      expect(result).to be_nil
+      expect(io.string).to include("1,Alice")
+    end
+
+    it "supports binds" do
+      result = app_query("SELECT * FROM export_test WHERE id = :id").copy_to(binds: {id: 1})
+      expect(result).to include("Alice")
+      expect(result).not_to include("Bob")
+    end
+
+    it "supports custom delimiter" do
+      result = app_query("SELECT * FROM export_test ORDER BY id").copy_to(delimiter: "\t", header: false)
+      expect(result).to include("1\tAlice")
+    end
+
+    it "supports format: :text" do
+      result = app_query("SELECT * FROM export_test ORDER BY id").copy_to(format: :text)
+      expect(result).to include("1\tAlice")
+    end
+
+    it "supports format: :binary" do
+      result = app_query("SELECT * FROM export_test ORDER BY id").copy_to(format: :binary)
+      # PostgreSQL binary format starts with "PGCOPY\n\xff\r\n\0"
+      expect(result).to start_with("PGCOPY\n")
+    end
+
+    it "supports select override parameter" do
+      result = app_query("SELECT * FROM export_test").copy_to("SELECT * FROM :_ WHERE id = 1", header: false)
+      expect(result.strip).to eq("1,Alice")
+    end
+
+    it "raises error for invalid format" do
+      expect { app_query("SELECT 1").copy_to(format: :json) }.to raise_error(
+        ArgumentError, /Invalid format: :json/
+      )
+    end
+  end
+
+  describe "#copy_to with non-PostgreSQL adapter" do
+    it "raises error when adapter doesn't support COPY" do
+      raw_conn = double("raw_connection")
+      allow(raw_conn).to receive(:respond_to?).with(:copy_data).and_return(false)
+      allow(ActiveRecord::Base.connection).to receive(:raw_connection).and_return(raw_conn)
+
+      expect { app_query("SELECT 1").copy_to }.to raise_error(
+        AppQuery::Error, /copy_to requires PostgreSQL/
+      )
+    end
+  end
 end

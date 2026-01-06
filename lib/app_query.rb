@@ -666,6 +666,79 @@ module AppQuery
       raise UnrenderedQueryError, "Query is ERB. Use #render before deleting."
     end
 
+    # Executes COPY TO STDOUT for efficient data export.
+    #
+    # PostgreSQL-only. Uses raw connection for streaming. Raises an error
+    # when used with SQLite or other non-PostgreSQL adapters.
+    #
+    # @param s [String, nil] optional SELECT to apply before extracting
+    # @param format [:csv, :text, :binary] output format (default: :csv)
+    # @param header [Boolean] include column headers (default: true, CSV only)
+    # @param delimiter [String] field delimiter (default: comma for CSV)
+    # @param to [String, IO, nil] destination - file path, IO object, or nil to return string
+    # @param binds [Hash] bind parameters
+    # @return [String, Integer, nil] CSV string if to: nil, bytes written if to: path, nil if to: IO
+    #
+    # @example Return as string
+    #   csv = AppQuery[:users].copy_to
+    #
+    # @example Write to file path
+    #   AppQuery[:users].copy_to(to: "export.csv")
+    #
+    # @example Write to IO object
+    #   File.open("export.csv", "w") { |f| query.copy_to(to: f) }
+    #
+    # @raise [AppQuery::Error] if adapter is not PostgreSQL
+    def copy_to(s = nil, format: :csv, header: true, delimiter: nil, to: nil, binds: {})
+      raw_conn = ActiveRecord::Base.connection.raw_connection
+      unless raw_conn.respond_to?(:copy_data)
+        raise Error, "copy_to requires PostgreSQL (current adapter does not support COPY)"
+      end
+
+      allowed_formats = %i[csv text binary]
+      unless allowed_formats.include?(format)
+        raise ArgumentError, "Invalid format: #{format.inspect}. Allowed: #{allowed_formats.join(", ")}"
+      end
+
+      add_binds(**binds).with_select(s).render({}).then do |aq|
+        options = ["FORMAT #{format.to_s.upcase}"]
+        options << "HEADER" if header && format == :csv
+        options << "DELIMITER '#{delimiter.to_s.gsub("'", "''")}'" if delimiter
+
+        inner_sql = ActiveRecord::Base.sanitize_sql_array([aq.to_s, aq.binds])
+        copy_sql = "COPY (#{inner_sql}) TO STDOUT WITH (#{options.join(", ")})"
+
+        case to
+        when NilClass
+          output = +""
+          raw_conn.copy_data(copy_sql) do
+            while (row = raw_conn.get_copy_data)
+              output << row
+            end
+          end
+          # pg returns ASCII-8BIT, but CSV/text is UTF-8; binary stays as-is
+          (format == :binary) ? output : output.force_encoding(Encoding::UTF_8)
+        when String
+          bytes = 0
+          File.open(to, "wb") do |f|
+            raw_conn.copy_data(copy_sql) do
+              while (row = raw_conn.get_copy_data)
+                bytes += f.write(row)
+              end
+            end
+          end
+          bytes
+        else
+          raw_conn.copy_data(copy_sql) do
+            while (row = raw_conn.get_copy_data)
+              to.write(row)
+            end
+          end
+          nil
+        end
+      end
+    end
+
     # @!group Query Introspection
 
     # Returns the tokenized representation of the SQL.
