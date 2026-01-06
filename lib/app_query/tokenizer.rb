@@ -257,16 +257,26 @@ module AppQuery
 
       level = 1
       loop do
-        read_until(/\)|\(/)
+        read_until(/\)|\(|'/)
         if eos?
           err "CTE select ended prematurely"
+        elsif match?(/'/)
+          # Skip string literal (handle escaped quotes '')
+          read_char
+          loop do
+            read_until(/'/)
+            read_char
+            break unless match?(/'/) # '' is escaped quote, continue
+            read_char
+          end
         elsif match?(/\(/)
           level += 1
+          read_char
         elsif match?(/\)/)
           level -= 1
           break if level.zero?
+          read_char
         end
-        read_char
       end
 
       err "Expected non-empty CTE select, e.g. '(select 1)'" if chars_read.strip == "("

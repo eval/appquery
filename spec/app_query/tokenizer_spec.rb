@@ -100,9 +100,14 @@ RSpec.describe AppQuery::Tokenizer do
         include(t: "CTE_SELECT", v: "(select\n 1)")
     end
 
-    it "allows for nested parenthese" do
+    it "allows for nested parentheses" do
       expect(emitted_token("(select * from (select 1) some_alias)", state: :lex_cte_select)).to \
         include(t: "CTE_SELECT", v: "(select * from (select 1) some_alias)")
+    end
+
+    it "skips over string literals containing parentheses" do
+      expect(emitted_token("(select daterange('2025-01-01', CURRENT_DATE, '[)'))", state: :lex_cte_select)).to \
+        include(t: "CTE_SELECT", v: "(select daterange('2025-01-01', CURRENT_DATE, '[)'))")
     end
 
     it "raises when ending prematurely" do
