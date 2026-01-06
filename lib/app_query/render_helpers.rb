@@ -214,6 +214,7 @@ module AppQuery
     #
     # @raise [ArgumentError] if page or per_page is not a positive integer
     def paginate(page:, per_page:)
+      return "" if page.nil?
       raise ArgumentError, "page must be a positive integer (got #{page.inspect})" unless page.is_a?(Integer) && page > 0
       raise ArgumentError, "per_page must be a positive integer (got #{per_page.inspect})" unless per_page.is_a?(Integer) && per_page > 0
 
