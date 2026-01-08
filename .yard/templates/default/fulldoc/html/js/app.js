@@ -1,3 +1,6 @@
+// Simplified YARD app.js - disabled SPA navigation in favor of regular links
+// The original SPA navigation was broken for nested pages
+
 window.__app = function () {
   var localStorage = {},
     sessionStorage = {};
@@ -151,7 +154,6 @@ window.__app = function () {
               $(this).addClass("deprecated");
             }
           });
-          // Add the value of the constant as "Tooltip" to the summary object
           list.find("pre.code").each(function () {
             var dt_element = $(this).parent().prev();
             var tooltip = $(this).text();
@@ -316,16 +318,6 @@ window.__app = function () {
     }, 10);
   }
 
-  function navigationChange() {
-    // This works around the broken anchor navigation with the YARD template.
-    window.onpopstate = function () {
-      var hash = window.location.hash;
-      if (hash !== "" && $(hash)[0]) {
-        $(hash)[0].scrollIntoView();
-      }
-    };
-  }
-
   $(document).ready(function () {
     navResizer();
     navExpander();
@@ -338,62 +330,16 @@ window.__app = function () {
     constantSummaryToggle();
     generateTOC();
     mainFocus();
-    navigationChange();
   });
 };
 window.__app();
 
-window.addEventListener(
-  "message",
-  async (e) => {
-    if (e.data.action === "navigate") {
-      // Fix: resolve URL relative to the iframe's base (root), not current page
-      const nav = document.getElementById("nav");
-      const baseUrl = new URL(nav.src, window.location.href).href.replace(/[^/]*$/, '');
-      const absoluteUrl = new URL(e.data.url, baseUrl).href;
-      const response = await fetch(absoluteUrl);
-      const text = await response.text();
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(text, "text/html");
-
-      const classListLink =
-        document.getElementById("class_list_link").classList;
-
-      const content = doc.querySelector("#main").innerHTML;
-      document.querySelector("#main").innerHTML = content;
-      document.title = doc.head.querySelector("title").innerText;
-      document.head.querySelectorAll("script").forEach((script) => {
-        if (
-          !script.type ||
-          (script.type.includes("text/javascript") && !script.src)
-        ) {
-          script.remove();
-        }
-      });
-
-      doc.head.querySelectorAll("script").forEach((script) => {
-        if (
-          !script.type ||
-          (script.type.includes("text/javascript") && !script.src)
-        ) {
-          const newScript = document.createElement("script");
-          newScript.type = "text/javascript";
-          newScript.textContent = script.textContent;
-          document.head.appendChild(newScript);
-        }
-      });
-
-      window.__app();
-
-      document.getElementById("class_list_link").classList = classListLink;
-
-      const url = new URL(e.data.url, "https://localhost");
-      const hash = decodeURIComponent(url.hash ?? "");
-      if (hash) {
-        document.getElementById(hash.substring(1)).scrollIntoView();
-      }
-      history.pushState({}, document.title, absoluteUrl);
-    }
-  },
-  false
-);
+// Force sidebar links to do full page navigation instead of broken SPA
+window.addEventListener("message", function (e) {
+  if (e.data.action === "navigate") {
+    // Calculate the correct absolute URL and do a real navigation
+    const nav = document.getElementById("nav");
+    const baseUrl = new URL(nav.src, window.location.href).href.replace(/[^/]*$/, '');
+    window.location.href = new URL(e.data.url, baseUrl).href;
+  }
+}, false);
