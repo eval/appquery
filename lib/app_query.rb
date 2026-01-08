@@ -963,5 +963,3 @@ rescue LoadError
 end
 
 require_relative "app_query/rspec" if Object.const_defined? :RSpec
-
-require "app_query/base" if defined?(ActiveRecord::Base)
