@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## 0.7.0
+
+**Releasedate**: 8-1-2026  
+**Rubygems**: https://rubygems.org/gems/appquery/versions/0.7.0  
+
 ### 💥 Breaking Changes
 
 - ⛔ drop Ruby 3.2 support  
