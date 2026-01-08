@@ -140,7 +140,7 @@
     <circle cx="-205" cy="0" r="5" fill="#EF4444"/>
     <circle cx="-188" cy="0" r="5" fill="#F59E0B"/>
     <circle cx="-171" cy="0" r="5" fill="#22C55E"/>
-    <text x="25" y="5" font-family="Monaco, 'Courier New', monospace" font-size="12" fill="#6366F1" text-anchor="middle" font-weight="500">AppQuery[:sales].select_all(binds: {year: 2025})</text>
+    <text x="25" y="5" font-family="Monaco, 'Courier New', monospace" font-size="12" fill="#6366F1" text-anchor="middle" font-weight="500">AppQuery[:sales].select_all(binds: {year: 2026})</text>
   </g>
 
   <!-- Result arrow -->
