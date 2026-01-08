@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### 🐛 Fixes
+
+- 🔧 Fix literal strings containing parentheses breaking CTE-parsing.
+
 ## 0.6.0
 
 **Releasedate**: 2-1-2026  
