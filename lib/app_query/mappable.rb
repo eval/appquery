@@ -3,10 +3,19 @@
 require "active_support/concern"
 
 module AppQuery
-  # Maps query results to Ruby objects (e.g., Data classes, Structs).
+  # Middleware concern that maps query results to Ruby objects in {BaseQuery} subclasses.
   #
-  # By default, looks for an `Item` constant in the query class.
-  # Use `map_to` to specify a different class.
+  # Include this module to automatically convert result hashes into typed objects
+  # like +Data+ classes or +Struct+s.
+  #
+  # By default, looks for an +Item+ constant in the query class.
+  # Use +map_to+ to specify a different class.
+  #
+  # @note This is a {BaseQuery} middleware. Include it in classes that inherit
+  #   from {BaseQuery} to transform hash results into typed objects.
+  #
+  # @see BaseQuery Base class for query objects
+  # @see Paginatable Another middleware for pagination support
   #
   # @example With default Item class
   #   class ArticlesQuery < ApplicationQuery
@@ -31,6 +40,18 @@ module AppQuery
   # @example Skip mapping with raw
   #   articles = ArticlesQuery.new.raw.entries
   #   articles.first  # => {"title" => "Hello", "url" => "..."}
+  #
+  # @example Combining with Paginatable
+  #   class ArticlesQuery < ApplicationQuery
+  #     include AppQuery::Paginatable
+  #     include AppQuery::Mappable
+  #
+  #     class Item < Data.define(:title, :url)
+  #     end
+  #   end
+  #
+  #   # Results are paginated AND mapped to Item objects
+  #   ArticlesQuery.new.paginate(page: 1).entries.first.title
   module Mappable
     extend ActiveSupport::Concern
 

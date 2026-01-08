@@ -3,13 +3,20 @@
 require "active_support/concern"
 
 module AppQuery
-  # Adds pagination support to query classes.
+  # Middleware concern that adds pagination support to {BaseQuery} subclasses.
+  #
+  # Include this module in your query class to enable pagination with
+  # Kaminari-compatible result objects.
   #
   # Provides two modes:
   # - **With count**: Full pagination with page numbers (uses COUNT query)
   # - **Without count**: Simple prev/next for large datasets (uses limit+1 trick)
   #
-  # Compatible with Kaminari view helpers.
+  # @note This is a {BaseQuery} middleware. Include it in classes that inherit
+  #   from {BaseQuery} and use the +paginate+ ERB helper in your SQL template.
+  #
+  # @see BaseQuery Base class for query objects
+  # @see Mappable Another middleware for mapping results to objects
   #
   # @example Basic usage
   #   class ApplicationQuery < AppQuery::BaseQuery
@@ -29,6 +36,12 @@ module AppQuery
   #   # Without count (large datasets)
   #   articles = ArticlesQuery.new.paginate(page: 1, without_count: true).entries
   #   articles.next_page    # => 2 (or nil if last page)
+  #
+  # @example SQL template with pagination
+  #   -- app/queries/articles.sql
+  #   SELECT * FROM articles
+  #   ORDER BY published_on DESC
+  #   <%= paginate(page: page, per_page: per_page) %>
   module Paginatable
     extend ActiveSupport::Concern
 
