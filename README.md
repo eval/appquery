@@ -305,6 +305,9 @@ git tag -s 1.2.3 -m "Release 1.2.3"
 git tag -s 1.2.3.rc1 -m "Release 1.2.3.rc1"
 
 git push origin --tags
+
+# then change version.rb for the next dev-cycle
+VERSION = "1.2.4.dev"
 ```
 
 CI will build, sign (Sigstore attestation), push to RubyGems, and create a GitHub release.
