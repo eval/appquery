@@ -1,5 +1,7 @@
 --readme README.md
 --markup markdown
+--asset assets:assets
+--template-path .yard/templates
 --no-private
 --output-dir doc
 --exclude tmp/

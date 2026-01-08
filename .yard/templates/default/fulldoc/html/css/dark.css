@@ -1,0 +1,234 @@
+/* Dark mode styles for YARD documentation */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    background: #0d1117;
+    color: #c9d1d9;
+  }
+
+  /* Main content area */
+  #main {
+    background: #0d1117;
+  }
+
+  /* Navigation */
+  #nav {
+    border-right-color: #30363d;
+  }
+
+  @media (max-width: 920px) {
+    #nav {
+      background: #161b22;
+      border-color: #30363d;
+      box-shadow: -7px 5px 25px #010409;
+    }
+  }
+
+  /* Links */
+  #content a, #content a:visited {
+    color: #58a6ff;
+  }
+  #content a:hover {
+    background: #1f2428;
+  }
+
+  /* Headers */
+  h1 {
+    border-top-color: #30363d;
+  }
+  h2 {
+    border-bottom-color: #30363d;
+  }
+  h2 small a {
+    border-color: #30363d;
+    background: #161b22;
+  }
+
+  /* Code blocks */
+  #filecontents pre.code, .docstring pre.code, .tags pre.example {
+    background: #161b22;
+    border-color: #30363d;
+  }
+  pre.code { color: #c9d1d9; }
+  pre.code .comment { color: #8b949e; }
+  pre.code .const, pre.code .constant { color: #d2a8ff; }
+  pre.code .kw { color: #ff7b72; }
+  pre.code .tstring_content, pre.code .tstring, pre.code .dstring,
+  pre.code .heredoc_beg, pre.code .heredoc_end,
+  pre.code .val { color: #a5d6ff; }
+  pre.code .symbol, pre.code .label { color: #7ee787; }
+  pre.code .ivar { color: #ffa657; }
+  pre.code .fid, pre.code .rubyid_new { color: #d2a8ff; }
+
+  /* Inline code */
+  .docstring p > code, .docstring p > tt,
+  .tags p > code, .tags p > tt {
+    color: #f97583;
+    background: #161b22;
+  }
+  *:not(pre) > code {
+    background: #161b22;
+    border-color: #30363d;
+  }
+
+  /* Object links in docstrings */
+  .summary_desc .object_link a, .docstring .object_link a {
+    color: #58a6ff;
+    background: #1f2428;
+  }
+
+  /* Signatures */
+  p.signature, h3.signature {
+    background: #161b22;
+    border-color: #30363d;
+  }
+  p.signature .extras, h3.signature .extras { color: #8b949e; }
+
+  /* Summary boxes */
+  .summary_signature {
+    background: #161b22;
+    border-color: #30363d;
+  }
+  .summary_signature:hover {
+    background: #1f2937;
+    border-color: #3b82f6;
+  }
+
+  /* Tables */
+  #filecontents table th, #filecontents table td,
+  .docstring table th, .docstring table td {
+    border-color: #30363d;
+  }
+  #filecontents table tr:nth-child(odd),
+  .docstring table tr:nth-child(odd) { background: #161b22; }
+  #filecontents table tr:nth-child(even),
+  .docstring table tr:nth-child(even) { background: #0d1117; }
+  #filecontents table th, .docstring table th { background: #21262d; }
+
+  /* Box info */
+  .box_info dl dt {
+    border-color: #30363d;
+  }
+  .box_info dl dd {
+    border-color: #30363d;
+  }
+  .box_info dl:nth-child(odd) > * { background: #161b22; }
+  .box_info dl:nth-child(even) > * { background: #0d1117; }
+
+  /* Definition lists */
+  #filecontents dl, .docstring dl { border-color: #30363d; }
+  #filecontents dt, .docstring dt { background: #21262d; }
+
+  /* Notes */
+  .note {
+    border-color: #30363d;
+    color: #c9d1d9;
+  }
+  .note.todo { background: #3d3200; border-color: #5c4a00; }
+  .note.deprecated { background: #3d1f1f; border-color: #5c2d2d; }
+  .note.returns_void { background: #21262d; }
+  .note.title { background: #21262d; }
+  .note.title.constructor { background: #1f3a5f; border-color: #2d4a6f; }
+  .note.title.writeonly { background: #1a4d1a; border-color: #2a5d2a; }
+  .note.title.readonly { background: #1f3a5f; border-color: #2d4a6f; }
+  .note.title.private { background: #30363d; border-color: #484f58; }
+
+  /* Search */
+  #search a {
+    background: #161b22;
+    border-color: #30363d;
+    color: #58a6ff;
+    fill: #58a6ff;
+    box-shadow: -1px 1px 3px #010409;
+  }
+  #search a:hover { background: #1f2428; }
+  #search a.active {
+    background: #1f6feb;
+    border-color: #1f6feb;
+  }
+  #search a.inactive { color: #484f58; fill: #484f58; }
+
+  /* Menu */
+  #menu { color: #484f58; }
+  #menu .title { color: #c9d1d9; }
+  #menu a, #menu a:visited { color: #c9d1d9; border-bottom-color: #30363d; }
+  #menu a:hover { color: #58a6ff; }
+
+  /* Footer */
+  #footer { border-top-color: #30363d; color: #8b949e; }
+  #footer a, #footer a:visited { color: #c9d1d9; border-bottom-color: #30363d; }
+  #footer a:hover { color: #58a6ff; }
+
+  /* TOC */
+  #toc {
+    background: #161b22;
+    border-color: #30363d;
+    box-shadow: -2px 2px 6px #010409;
+  }
+  #toc.hidden { background: #161b22; }
+  #toc.hidden:hover { background: #1f2428; }
+
+  /* Method details */
+  .method_details { border-top-color: #30363d; }
+
+  /* Inheritance tree */
+  .inheritanceTree, .toggleDefines {
+    background: #161b22;
+    border-left-color: #30363d;
+  }
+
+  /* Source code */
+  .source_code { border-left-color: #30363d; }
+  .source_code .lines { color: #8b949e; }
+
+  /* List items */
+  li.r1 { background: #161b22; }
+  li.r2 { background: #0d1117; }
+
+  /* Constants */
+  dl.constants dd { color: #c9d1d9; }
+
+  /* Full list pages (Class List, Method List, File List) */
+  .fixed_header {
+    background: #0d1117;
+  }
+  #noresults {
+    background: #161b22;
+  }
+  li.odd {
+    background: #161b22;
+  }
+  li.even {
+    background: #0d1117;
+  }
+  .item:hover {
+    background: #21262d;
+  }
+  a, a:visited {
+    color: #58a6ff;
+  }
+  li {
+    color: #8b949e;
+  }
+  li.clicked > .item {
+    background: #1f6feb;
+    color: #c9d1d9;
+  }
+  li.clicked > .item a, li.clicked > .item a:visited {
+    color: #fff;
+  }
+  #search input {
+    background: #0d1117;
+    border-color: #30363d;
+    color: #c9d1d9;
+  }
+  #full_list_nav {
+    color: #484f58;
+  }
+  #full_list_nav a, #nav a:visited {
+    color: #58a6ff;
+  }
+}

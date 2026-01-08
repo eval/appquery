@@ -9,42 +9,46 @@ module AppQuery
   # BaseQuery provides a structured way to work with SQL queries compared to
   # using `AppQuery[:my_query]` directly.
   #
+  # @see Paginatable Middleware for pagination support
+  # @see Mappable Middleware for mapping results to objects
+  #
   # ## Benefits over AppQuery[:my_query]
   #
   # ### 1. Explicit parameter declaration
   # Declare required binds and vars upfront with defaults:
   #
-  #   class ArticlesQuery < AppQuery::BaseQuery
-  #     bind :author_id              # required
-  #     bind :status, default: nil   # optional
-  #     var :order_by, default: "created_at DESC"
-  #   end
+  #     class ArticlesQuery < AppQuery::BaseQuery
+  #       bind :author_id              # required
+  #       bind :status, default: nil   # optional
+  #       var :order_by, default: "created_at DESC"
+  #     end
   #
   # ### 2. Unknown parameter validation
   # Raises ArgumentError for typos or unknown parameters:
   #
-  #   ArticlesQuery.new(athor_id: 1)  # => ArgumentError: Unknown param(s): athor_id
+  #     ArticlesQuery.new(athor_id: 1)
+  #     # => ArgumentError: Unknown param(s): athor_id
   #
   # ### 3. Self-documenting queries
   # Query classes show exactly what parameters are available:
   #
-  #   ArticlesQuery.binds  # => {author_id: {default: nil}, status: {default: nil}}
-  #   ArticlesQuery.vars   # => {order_by: {default: "created_at DESC"}}
+  #     ArticlesQuery.binds  # => {author_id: {default: nil}, ...}
+  #     ArticlesQuery.vars   # => {order_by: {default: "created_at DESC"}}
   #
   # ### 4. Middleware support
   # Include concerns to add functionality:
   #
-  #   class ApplicationQuery < AppQuery::BaseQuery
-  #     include AppQuery::Paginatable
-  #     include AppQuery::Mappable
-  #   end
+  #     class ApplicationQuery < AppQuery::BaseQuery
+  #       include AppQuery::Paginatable
+  #       include AppQuery::Mappable
+  #     end
   #
   # ### 5. Casts
   # Define casts for columns:
   #
-  #   class ApplicationQuery < AppQuery::BaseQuery
-  #     cast metadata: :json
-  #   end
+  #     class ApplicationQuery < AppQuery::BaseQuery
+  #       cast metadata: :json
+  #     end
   #
   # ## Parameter types
   #
@@ -57,23 +61,24 @@ module AppQuery
   # - `ArticlesQuery` -> `articles.sql.erb`
   # - `Reports::MonthlyQuery` -> `reports/monthly.sql.erb`
   #
-  # ## Example
-  #
-  #   # app/queries/articles.sql.erb
+  # @example SQL template (app/queries/articles.sql.erb)
   #   SELECT * FROM articles
   #   WHERE author_id = :author_id
-  #   <% if @status %>AND status = :status<% end %>
+  #   <% if @editor %>AND status = :status<% end %>
   #   ORDER BY <%= @order_by %>
   #
-  #   # app/queries/articles_query.rb
+  # @example Query class (app/queries/articles_query.rb)
   #   class ArticlesQuery < AppQuery::BaseQuery
   #     bind :author_id
   #     bind :status, default: nil
+  #
+  #     var :editor, default: false
   #     var :order_by, default: "created_at DESC"
+  #
   #     cast published_at: :datetime
   #   end
   #
-  #   # Usage
+  # @example Usage
   #   ArticlesQuery.new(author_id: 1).entries
   #   ArticlesQuery.new(author_id: 1, status: "draft", order_by: "title").first
   #
