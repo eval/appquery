@@ -96,6 +96,8 @@
     <text x="300" y="20">WITH cte AS (...)</text>
     <text x="500" y="235">GROUP BY category</text>
   </g>
+  <!-- 🥚 -->
+  <text x="792" y="238" font-family="Monaco, monospace" font-size="6" fill="#6366F1" opacity="0.08" text-anchor="end">eval</text>
 
   <!-- Data flow curves -->
   <g stroke-width="2" fill="none" opacity="0.2">

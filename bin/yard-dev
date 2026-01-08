@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
 
+# Generate docs (copies assets like banners)
+bundle exec yard doc
+
 echo "Visit http://localhost:8809"
-bundle exec yard server --reload --port 8809
+echo "Run 'bundle exec yard doc' to regenerate after changes"
+
+# Serve static docs
+ruby -run -ehttpd doc -p8809
