@@ -1,7 +1,7 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/eval/appquery/main/.github/banner-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/eval/appquery/main/.github/banner-light.svg">
-  <img alt="AppQuery - Raw SQL, ergonomically" src="https://raw.githubusercontent.com/eval/appquery/main/.github/banner-light.svg" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="/.github/banner-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="/.github/banner-light.svg">
+  <img alt="AppQuery - Raw SQL, ergonomically" src="/.github/banner-light.svg" width="100%">
 </picture>
 
 <p align="center">
