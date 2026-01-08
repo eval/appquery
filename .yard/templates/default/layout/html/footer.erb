@@ -1,0 +1,7 @@
+<div id="footer">
+  AppQuery <%= ENV["APPQUERY_VERSION"] || `git describe --tags --abbrev=0 2>/dev/null`.strip %>
+  &mdash;
+  Generated on <%= Time.now.strftime("%c") %> by
+  <a href="https://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
+  <%= YARD::VERSION %> (ruby-<%= RUBY_VERSION %>).
+</div>
