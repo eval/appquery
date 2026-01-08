@@ -300,6 +300,10 @@ RSpec.describe AppQuery::Q do
         SQL
       end
 
+      it "returns empty string when page is nil" do
+        expect(render_sql("<%= paginate(page: nil, per_page: 25) %>", {})).to eq("")
+      end
+
       it "raises for invalid page" do
         expect {
           render_sql("<%= paginate(page: 0, per_page: 25) %>", {})

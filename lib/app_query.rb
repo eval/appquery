@@ -772,8 +772,9 @@ module AppQuery
       # Replace :_ with the current CTE name
       processed_sql = sql.gsub(/:_\b/, current_cte)
 
-      # Wrap current SELECT in numbered CTE
-      new_cte = "#{current_cte} AS (\n  #{select}\n)"
+      # Wrap current SELECT in numbered CTE (indent all lines, strip trailing whitespace)
+      indented_select = select.rstrip.gsub("\n", "\n  ")
+      new_cte = "#{current_cte} AS (\n  #{indented_select}\n)"
 
       append_cte(new_cte).then do |q|
         # Replace the SELECT token with processed_sql and increment depth

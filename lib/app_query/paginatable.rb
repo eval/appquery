@@ -125,6 +125,12 @@ module AppQuery
       self
     end
 
+    def unpaginated
+      @page = nil
+      @per_page = nil
+      self
+    end
+
     def entries
       @_entries ||= build_paginated_result(super)
     end
@@ -135,7 +141,7 @@ module AppQuery
 
     def unpaginated_query
       base_query
-        .render(**render_vars.except(:page, :per_page))
+        .render(**render_vars, page: nil)
         .with_binds(**bind_vars)
     end
 

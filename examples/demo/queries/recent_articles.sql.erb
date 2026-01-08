@@ -53,6 +53,4 @@ WHERE EXISTS (
 )
 GROUP BY recent_articles.article_id
 ORDER BY recent_articles.article_published_on desc
-<% if @page %>
-<%= paginate(page:, per_page:) %>
-<% end %>
+<%= paginate(page:, per_page:) -%>
