@@ -1,5 +1,31 @@
 ## [Unreleased]
 
+### 💥 Breaking Changes
+
+- ⛔ drop Ruby 3.2 support  
+  Ruby 3.2 will be EOL in 2 months but is already no longer working for Rails >v8.1.
+
+### ✨ Features
+
+- 🗒️ Paginatable: unpaginated  
+  Override any setting for pagination:
+  ```ruby
+  query = ArticlesQuery.build
+  => #<RecentQuery:0x000000016ed7ef78 @page=1, @per_page=10, ...>
+  query.unpaginated.count
+  #=> 699
+  ```
+  Also: when `@page.nil?` then paginate erb-helper renders nothing:
+  ```ruby
+  # articles_query.erb.sql
+  # before
+  # skip pagination when we need the total count
+  <%= @page && paginate(page:, per_page:) -%>
+  # after
+  <%= paginate(page:, per_page:) -%>
+  ```
+- 🌗 darkmode for API docs
+
 ### 🐛 Fixes
 
 - 🔧 Fix literal strings containing parentheses breaking CTE-parsing.
