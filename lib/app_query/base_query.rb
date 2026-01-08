@@ -64,14 +64,17 @@ module AppQuery
   # @example SQL template (app/queries/articles.sql.erb)
   #   SELECT * FROM articles
   #   WHERE author_id = :author_id
-  #   <% if @status %>AND status = :status<% end %>
+  #   <% if @editor %>AND status = :status<% end %>
   #   ORDER BY <%= @order_by %>
   #
   # @example Query class (app/queries/articles_query.rb)
   #   class ArticlesQuery < AppQuery::BaseQuery
   #     bind :author_id
   #     bind :status, default: nil
+  #
+  #     var :editor, default: false
   #     var :order_by, default: "created_at DESC"
+  #
   #     cast published_at: :datetime
   #   end
   #
