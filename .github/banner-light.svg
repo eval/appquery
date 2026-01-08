@@ -1,150 +1,222 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240">
   <defs>
-    <!-- Main gradient -->
+    <!-- Main title gradient -->
     <linearGradient id="title-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#6366F1"/>
-      <stop offset="50%" style="stop-color:#8B5CF6"/>
-      <stop offset="100%" style="stop-color:#EC4899"/>
+      <stop offset="0%" style="stop-color:#4F46E5"/>
+      <stop offset="25%" style="stop-color:#7C3AED"/>
+      <stop offset="50%" style="stop-color:#DB2777"/>
+      <stop offset="75%" style="stop-color:#F59E0B"/>
+      <stop offset="100%" style="stop-color:#10B981"/>
     </linearGradient>
 
-    <!-- Accent gradient -->
-    <linearGradient id="accent-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+    <!-- Accent gradients -->
+    <linearGradient id="accent-left" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#6366F1"/>
-      <stop offset="100%" style="stop-color:#EC4899"/>
+      <stop offset="100%" style="stop-color:#8B5CF6"/>
+    </linearGradient>
+    <linearGradient id="accent-right" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#EC4899"/>
+      <stop offset="100%" style="stop-color:#F43F5E"/>
+    </linearGradient>
+    <linearGradient id="rainbow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#6366F1"/>
+      <stop offset="50%" style="stop-color:#EC4899"/>
+      <stop offset="100%" style="stop-color:#F59E0B"/>
     </linearGradient>
 
-    <!-- Subtle background gradient -->
-    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#FAFAFA"/>
+    <!-- Background gradient -->
+    <radialGradient id="bg-radial" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" style="stop-color:#FFFFFF"/>
       <stop offset="100%" style="stop-color:#F3F4F6"/>
-    </linearGradient>
+    </radialGradient>
 
-    <!-- Glow filter -->
+    <!-- Glow filters -->
     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
       <feMerge>
         <feMergeNode in="coloredBlur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-
-    <!-- Soft shadow -->
+    <filter id="glow-strong" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#6366F1" flood-opacity="0.15"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#6366F1" flood-opacity="0.2"/>
     </filter>
 
-    <!-- Grid pattern -->
-    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#E5E7EB" stroke-width="0.5"/>
+    <!-- Patterns -->
+    <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#E5E7EB" stroke-width="0.5"/>
+    </pattern>
+    <pattern id="dots" width="15" height="15" patternUnits="userSpaceOnUse">
+      <circle cx="7.5" cy="7.5" r="1" fill="#6366F1" opacity="0.15"/>
+    </pattern>
+    <pattern id="hexgrid" width="28" height="49" patternUnits="userSpaceOnUse">
+      <path d="M14,0 L28,8 L28,24 L14,32 L0,24 L0,8 Z M14,33 L28,41 L28,49 M14,33 L0,41 L0,49" fill="none" stroke="#E5E7EB" stroke-width="0.3"/>
     </pattern>
 
-    <!-- Dot pattern -->
-    <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse">
-      <circle cx="10" cy="10" r="1" fill="#6366F1" opacity="0.1"/>
-    </pattern>
+    <!-- Orb gradient -->
+    <radialGradient id="orb-purple" cx="30%" cy="30%">
+      <stop offset="0%" style="stop-color:#C4B5FD"/>
+      <stop offset="100%" style="stop-color:#8B5CF6;stop-opacity:0"/>
+    </radialGradient>
+    <radialGradient id="orb-pink" cx="30%" cy="30%">
+      <stop offset="0%" style="stop-color:#FBCFE8"/>
+      <stop offset="100%" style="stop-color:#EC4899;stop-opacity:0"/>
+    </radialGradient>
+    <radialGradient id="orb-blue" cx="30%" cy="30%">
+      <stop offset="0%" style="stop-color:#A5B4FC"/>
+      <stop offset="100%" style="stop-color:#6366F1;stop-opacity:0"/>
+    </radialGradient>
   </defs>
 
   <!-- Background layers -->
-  <rect width="800" height="220" fill="url(#bg-grad)"/>
-  <rect width="800" height="220" fill="url(#grid)" opacity="0.4"/>
-  <rect width="800" height="220" fill="url(#dots)" opacity="0.5"/>
+  <rect width="800" height="240" fill="url(#bg-radial)"/>
+  <rect width="800" height="240" fill="url(#hexgrid)" opacity="0.4"/>
+  <rect width="800" height="240" fill="url(#dots)" opacity="0.5"/>
 
-  <!-- Large decorative circles -->
-  <circle cx="0" cy="110" r="150" fill="#6366F1" opacity="0.02"/>
-  <circle cx="800" cy="110" r="180" fill="#EC4899" opacity="0.02"/>
-  <circle cx="400" cy="250" r="200" fill="#8B5CF6" opacity="0.015"/>
+  <!-- Large glowing orbs -->
+  <circle cx="80" cy="80" r="100" fill="url(#orb-purple)" opacity="0.4"/>
+  <circle cx="720" cy="160" r="120" fill="url(#orb-pink)" opacity="0.3"/>
+  <circle cx="400" cy="280" r="180" fill="url(#orb-blue)" opacity="0.2"/>
+  <circle cx="650" cy="40" r="60" fill="url(#orb-purple)" opacity="0.25"/>
+  <circle cx="150" cy="200" r="70" fill="url(#orb-pink)" opacity="0.2"/>
 
-  <!-- Decorative lines - data flow -->
-  <path d="M 80 60 Q 200 80 280 100" stroke="url(#accent-grad)" stroke-width="1" fill="none" opacity="0.2"/>
-  <path d="M 720 60 Q 600 80 520 100" stroke="url(#accent-grad)" stroke-width="1" fill="none" opacity="0.2"/>
-  <path d="M 100 160 Q 200 140 300 150" stroke="#6366F1" stroke-width="1" fill="none" opacity="0.15" stroke-dasharray="4 4"/>
-  <path d="M 700 160 Q 600 140 500 150" stroke="#EC4899" stroke-width="1" fill="none" opacity="0.15" stroke-dasharray="4 4"/>
-
-  <!-- Sparkles -->
-  <g fill="#6366F1" opacity="0.3">
-    <polygon points="90,40 92,46 98,46 93,50 95,56 90,52 85,56 87,50 82,46 88,46" transform="scale(0.6)"/>
-  </g>
-  <g fill="#8B5CF6" opacity="0.25">
-    <polygon points="750,50 752,56 758,56 753,60 755,66 750,62 745,66 747,60 742,56 748,56" transform="scale(0.5) translate(700, 20)"/>
-  </g>
-  <g fill="#EC4899" opacity="0.2">
-    <polygon points="150,180 152,186 158,186 153,190 155,196 150,192 145,196 147,190 142,186 148,186" transform="scale(0.5)"/>
+  <!-- Floating binary/code snippets -->
+  <g font-family="Monaco, monospace" font-size="8" fill="#6366F1" opacity="0.15">
+    <text x="20" y="30">SELECT * FROM</text>
+    <text x="700" y="25">WHERE id = :id</text>
+    <text x="50" y="220">ORDER BY created_at</text>
+    <text x="680" y="230">LIMIT 100</text>
+    <text x="300" y="20">WITH cte AS (...)</text>
+    <text x="500" y="235">GROUP BY category</text>
   </g>
 
-  <!-- Floating SQL keywords - left side -->
+  <!-- Data flow curves -->
+  <g stroke-width="2" fill="none" opacity="0.2">
+    <path d="M 0 120 Q 100 80 200 100 T 350 90" stroke="url(#accent-left)"/>
+    <path d="M 800 120 Q 700 80 600 100 T 450 90" stroke="url(#accent-right)"/>
+    <path d="M 0 180 Q 150 160 250 170 T 380 150" stroke="url(#accent-left)" stroke-dasharray="5 5"/>
+    <path d="M 800 180 Q 650 160 550 170 T 420 150" stroke="url(#accent-right)" stroke-dasharray="5 5"/>
+  </g>
+
+  <!-- Sparkles and stars -->
+  <g fill="#F59E0B">
+    <polygon points="100,50 102,56 108,56 103,60 105,66 100,62 95,66 97,60 92,56 98,56" opacity="0.5"/>
+    <polygon points="700,45 701,48 704,48 702,50 703,53 700,51 697,53 698,50 696,48 699,48" opacity="0.4"/>
+    <polygon points="180,180 181,183 184,183 182,185 183,188 180,186 177,188 178,185 176,183 179,183" opacity="0.35"/>
+  </g>
+  <g fill="#EC4899">
+    <polygon points="620,180 621,183 624,183 622,185 623,188 620,186 617,188 618,185 616,183 619,183" opacity="0.4"/>
+    <polygon points="750,100 752,106 758,106 753,110 755,116 750,112 745,116 747,110 742,106 748,106" opacity="0.3"/>
+  </g>
+  <g fill="#6366F1">
+    <polygon points="50,140 51,143 54,143 52,145 53,148 50,146 47,148 48,145 46,143 49,143" opacity="0.5"/>
+    <polygon points="350,30 351,33 354,33 352,35 353,38 350,36 347,38 348,35 346,33 349,33" opacity="0.4"/>
+  </g>
+
+  <!-- Floating SQL keywords with varied styling -->
   <g font-family="Monaco, 'Courier New', monospace">
-    <text x="55" y="45" font-size="12" fill="#6366F1" opacity="0.6" font-weight="600">SELECT</text>
-    <text x="35" y="85" font-size="11" fill="#8B5CF6" opacity="0.5">FROM</text>
-    <text x="65" y="125" font-size="12" fill="#6366F1" opacity="0.4">WHERE</text>
-    <text x="25" y="165" font-size="11" fill="#EC4899" opacity="0.5">JOIN</text>
-    <text x="75" y="195" font-size="10" fill="#8B5CF6" opacity="0.3">LIMIT</text>
+    <text x="45" y="65" font-size="14" fill="#6366F1" opacity="0.7" font-weight="700" filter="url(#glow)">SELECT</text>
+    <text x="30" y="105" font-size="12" fill="#8B5CF6" opacity="0.5">FROM</text>
+    <text x="55" y="145" font-size="13" fill="#6366F1" opacity="0.4" font-weight="600">WHERE</text>
+    <text x="25" y="185" font-size="11" fill="#EC4899" opacity="0.5">JOIN</text>
+
+    <text x="705" y="60" font-size="12" fill="#8B5CF6" opacity="0.5">WITH</text>
+    <text x="725" y="100" font-size="14" fill="#6366F1" opacity="0.7" font-weight="700" filter="url(#glow)">CTE</text>
+    <text x="670" y="140" font-size="11" fill="#EC4899" opacity="0.4">ORDER BY</text>
+    <text x="710" y="180" font-size="12" fill="#8B5CF6" opacity="0.5">GROUP</text>
   </g>
 
-  <!-- Floating SQL keywords - right side -->
-  <g font-family="Monaco, 'Courier New', monospace">
-    <text x="715" y="40" font-size="11" fill="#8B5CF6" opacity="0.5">WITH</text>
-    <text x="735" y="80" font-size="12" fill="#6366F1" opacity="0.6" font-weight="600">CTE</text>
-    <text x="680" y="120" font-size="11" fill="#EC4899" opacity="0.4">ORDER BY</text>
-    <text x="720" y="160" font-size="12" fill="#8B5CF6" opacity="0.5">GROUP</text>
-    <text x="700" y="195" font-size="10" fill="#6366F1" opacity="0.3">HAVING</text>
+  <!-- Database cylinders with glow -->
+  <g transform="translate(130, 85)" filter="url(#glow)">
+    <g opacity="0.3">
+      <ellipse cx="0" cy="0" rx="25" ry="10" fill="#EEF2FF" stroke="#6366F1" stroke-width="2"/>
+      <path d="M-25,0 L-25,35 A25,10 0 0,0 25,35 L25,0" fill="#EEF2FF" stroke="#6366F1" stroke-width="2"/>
+      <ellipse cx="0" cy="17" rx="25" ry="10" fill="none" stroke="#6366F1" stroke-width="1" stroke-dasharray="4 3"/>
+      <ellipse cx="0" cy="35" rx="25" ry="10" fill="#EEF2FF" stroke="#6366F1" stroke-width="2"/>
+    </g>
+  </g>
+  <g transform="translate(670, 90)" filter="url(#glow)">
+    <g opacity="0.3">
+      <ellipse cx="0" cy="0" rx="23" ry="9" fill="#FDF2F8" stroke="#EC4899" stroke-width="2"/>
+      <path d="M-23,0 L-23,32 A23,9 0 0,0 23,32 L23,0" fill="#FDF2F8" stroke="#EC4899" stroke-width="2"/>
+      <ellipse cx="0" cy="16" rx="23" ry="9" fill="none" stroke="#EC4899" stroke-width="1" stroke-dasharray="4 3"/>
+      <ellipse cx="0" cy="32" rx="23" ry="9" fill="#FDF2F8" stroke="#EC4899" stroke-width="2"/>
+    </g>
   </g>
 
-  <!-- Database icon left -->
-  <g transform="translate(140, 75)" opacity="0.2">
-    <ellipse cx="0" cy="0" rx="22" ry="9" fill="none" stroke="#6366F1" stroke-width="2"/>
-    <path d="M-22,0 L-22,28 A22,9 0 0,0 22,28 L22,0" fill="none" stroke="#6366F1" stroke-width="2"/>
-    <ellipse cx="0" cy="14" rx="22" ry="9" fill="none" stroke="#6366F1" stroke-width="1" stroke-dasharray="3 3"/>
-    <ellipse cx="0" cy="28" rx="22" ry="9" fill="none" stroke="#6366F1" stroke-width="2"/>
+  <!-- Table/grid icons -->
+  <g transform="translate(195, 165)" opacity="0.25">
+    <rect x="-18" y="-14" width="36" height="28" rx="3" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+    <line x1="-18" y1="-4" x2="18" y2="-4" stroke="#6366F1" stroke-width="1"/>
+    <line x1="-18" y1="6" x2="18" y2="6" stroke="#6366F1" stroke-width="0.5" stroke-dasharray="2 2"/>
+    <line x1="-4" y1="-14" x2="-4" y2="14" stroke="#6366F1" stroke-width="1"/>
+    <line x1="8" y1="-14" x2="8" y2="14" stroke="#6366F1" stroke-width="0.5" stroke-dasharray="2 2"/>
+  </g>
+  <g transform="translate(605, 165)" opacity="0.25">
+    <rect x="-18" y="-14" width="36" height="28" rx="3" fill="#FDF2F8" stroke="#EC4899" stroke-width="1.5"/>
+    <line x1="-18" y1="-4" x2="18" y2="-4" stroke="#EC4899" stroke-width="1"/>
+    <line x1="-18" y1="6" x2="18" y2="6" stroke="#EC4899" stroke-width="0.5" stroke-dasharray="2 2"/>
+    <line x1="-4" y1="-14" x2="-4" y2="14" stroke="#EC4899" stroke-width="1"/>
   </g>
 
-  <!-- Database icon right -->
-  <g transform="translate(660, 80)" opacity="0.2">
-    <ellipse cx="0" cy="0" rx="20" ry="8" fill="none" stroke="#EC4899" stroke-width="2"/>
-    <path d="M-20,0 L-20,25 A20,8 0 0,0 20,25 L20,0" fill="none" stroke="#EC4899" stroke-width="2"/>
-    <ellipse cx="0" cy="12" rx="20" ry="8" fill="none" stroke="#EC4899" stroke-width="1" stroke-dasharray="3 3"/>
-    <ellipse cx="0" cy="25" rx="20" ry="8" fill="none" stroke="#EC4899" stroke-width="2"/>
+  <!-- Ruby gem - detailed with facets -->
+  <g transform="translate(400, 42)" opacity="0.2">
+    <polygon points="0,-28 25,-10 15,22 -15,22 -25,-10" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
+    <polygon points="0,-28 25,-10 0,8 -25,-10" fill="#FECACA" stroke="#DC2626" stroke-width="1"/>
+    <polygon points="0,8 25,-10 15,22" fill="#FCA5A5" stroke="#DC2626" stroke-width="1"/>
+    <polygon points="0,8 -25,-10 -15,22" fill="#FCA5A5" stroke="#DC2626" stroke-width="1"/>
+    <line x1="0" y1="-28" x2="0" y2="22" stroke="#DC2626" stroke-width="1"/>
   </g>
 
-  <!-- Table icon left -->
-  <g transform="translate(185, 150)" opacity="0.15">
-    <rect x="-15" y="-12" width="30" height="24" rx="2" fill="none" stroke="#6366F1" stroke-width="1.5"/>
-    <line x1="-15" y1="-4" x2="15" y2="-4" stroke="#6366F1" stroke-width="1"/>
-    <line x1="-5" y1="-12" x2="-5" y2="12" stroke="#6366F1" stroke-width="1"/>
+  <!-- Connection dots/nodes -->
+  <g fill="#6366F1">
+    <circle cx="250" cy="100" r="4" opacity="0.3"/>
+    <circle cx="280" cy="120" r="3" opacity="0.2"/>
+    <circle cx="320" cy="105" r="5" opacity="0.25"/>
+  </g>
+  <g fill="#EC4899">
+    <circle cx="550" cy="100" r="4" opacity="0.3"/>
+    <circle cx="520" cy="120" r="3" opacity="0.2"/>
+    <circle cx="480" cy="105" r="5" opacity="0.25"/>
   </g>
 
-  <!-- Arrow/flow icon right -->
-  <g transform="translate(615, 145)" opacity="0.15">
-    <path d="M-20,0 L10,0 M5,-5 L10,0 L5,5" stroke="#EC4899" stroke-width="2" fill="none"/>
+  <!-- Main title with rainbow gradient and strong glow -->
+  <text x="400" y="115" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="62" font-weight="900" fill="url(#title-grad)" text-anchor="middle" filter="url(#glow-strong)">AppQuery</text>
+
+  <!-- Decorative underline - animated look -->
+  <g transform="translate(400, 128)">
+    <rect x="-120" y="0" width="240" height="4" rx="2" fill="url(#rainbow)" opacity="0.6"/>
+    <rect x="-100" y="6" width="200" height="2" rx="1" fill="url(#rainbow)" opacity="0.3"/>
   </g>
 
-  <!-- Ruby gem icon - more detailed -->
-  <g transform="translate(400, 40)" opacity="0.12">
-    <polygon points="0,-22 20,-7 12,18 -12,18 -20,-7" fill="none" stroke="#DC2626" stroke-width="2"/>
-    <line x1="0" y1="-22" x2="0" y2="18" stroke="#DC2626" stroke-width="1" opacity="0.5"/>
-    <line x1="-20" y1="-7" x2="12" y2="18" stroke="#DC2626" stroke-width="1" opacity="0.5"/>
-    <line x1="20" y1="-7" x2="-12" y2="18" stroke="#DC2626" stroke-width="1" opacity="0.5"/>
+  <!-- Tagline with subtle styling -->
+  <text x="400" y="158" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="18" fill="#6B7280" text-anchor="middle" letter-spacing="2" font-weight="500">Raw SQL, ergonomically</text>
+
+  <!-- Terminal code block - fancy -->
+  <g transform="translate(400, 200)" filter="url(#shadow)">
+    <rect x="-250" y="-18" width="500" height="36" rx="18" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"/>
+    <!-- Window controls -->
+    <circle cx="-225" cy="0" r="6" fill="#EF4444"/>
+    <circle cx="-206" cy="0" r="6" fill="#F59E0B"/>
+    <circle cx="-187" cy="0" r="6" fill="#22C55E"/>
+    <!-- Separator -->
+    <line x1="-170" y1="-10" x2="-170" y2="10" stroke="#E5E7EB" stroke-width="1"/>
+    <!-- Code with syntax highlighting -->
+    <text x="-155" y="5" font-family="Monaco, 'Courier New', monospace" font-size="12">
+      <tspan fill="#8B5CF6">AppQuery</tspan><tspan fill="#6B7280">[</tspan><tspan fill="#059669">:sales</tspan><tspan fill="#6B7280">].</tspan><tspan fill="#2563EB">select_all</tspan><tspan fill="#6B7280">(</tspan><tspan fill="#DC2626">binds:</tspan><tspan fill="#6B7280"> {</tspan><tspan fill="#059669">year:</tspan><tspan fill="#D97706"> 2026</tspan><tspan fill="#6B7280">})</tspan>
+    </text>
   </g>
 
-  <!-- Main title with glow -->
-  <text x="400" y="105" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="58" font-weight="800" fill="url(#title-grad)" text-anchor="middle" filter="url(#glow)">AppQuery</text>
-
-  <!-- Decorative underline -->
-  <rect x="300" y="115" width="200" height="3" rx="1.5" fill="url(#accent-grad)" opacity="0.3"/>
-
-  <!-- Tagline -->
-  <text x="400" y="145" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="18" fill="#6B7280" text-anchor="middle" letter-spacing="1">Raw SQL, ergonomically</text>
-
-  <!-- Code line decoration - terminal style -->
-  <g transform="translate(400, 185)" filter="url(#shadow)">
-    <rect x="-230" y="-14" width="460" height="28" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"/>
-    <circle cx="-205" cy="0" r="5" fill="#EF4444"/>
-    <circle cx="-188" cy="0" r="5" fill="#F59E0B"/>
-    <circle cx="-171" cy="0" r="5" fill="#22C55E"/>
-    <text x="25" y="5" font-family="Monaco, 'Courier New', monospace" font-size="12" fill="#6366F1" text-anchor="middle" font-weight="500">AppQuery[:sales].select_all(binds: {year: 2026})</text>
-  </g>
-
-  <!-- Result arrow -->
-  <g transform="translate(400, 208)" opacity="0.4">
-    <path d="M-20,0 L0,8 L20,0" stroke="#22C55E" stroke-width="2" fill="none"/>
+  <!-- Output arrow with results hint -->
+  <g transform="translate(400, 228)">
+    <path d="M-30,0 L0,10 L30,0" stroke="#22C55E" stroke-width="2.5" fill="none" opacity="0.5"/>
+    <text x="0" y="12" font-family="Monaco, monospace" font-size="8" fill="#22C55E" text-anchor="middle" opacity="0.5">[{revenue: 42000, ...}]</text>
   </g>
 </svg>
