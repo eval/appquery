@@ -104,7 +104,7 @@ module AppQuery
 
     def lex_append_cte
       emit_token "COMMA", v: ","
-      emit_token "WHITESPACE", v: "\n  "
+      emit_token "WHITESPACE", v: "\n"
       push_return :lex_recursive_cte
     end
 
