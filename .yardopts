@@ -1,6 +1,6 @@
 --readme README.md
 --markup markdown
---asset .github:.github
+--asset assets:assets
 --template-path .yard/templates
 --no-private
 --output-dir doc
