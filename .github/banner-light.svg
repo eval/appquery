@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 150">
+  <defs>
+    <linearGradient id="grad-light" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4F46E5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="150" fill="#ffffff"/>
+
+  <!-- SQL bracket decoration -->
+  <text x="30" y="95" font-family="Monaco, 'Courier New', monospace" font-size="60" fill="#E5E7EB" font-weight="bold">{</text>
+  <text x="750" y="95" font-family="Monaco, 'Courier New', monospace" font-size="60" fill="#E5E7EB" font-weight="bold">}</text>
+
+  <!-- Main title -->
+  <text x="400" y="75" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="48" font-weight="bold" fill="url(#grad-light)" text-anchor="middle">AppQuery</text>
+
+  <!-- Tagline -->
+  <text x="400" y="110" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="18" fill="#6B7280" text-anchor="middle">Raw SQL, ergonomically</text>
+
+  <!-- Code snippet decoration -->
+  <text x="400" y="135" font-family="Monaco, 'Courier New', monospace" font-size="12" fill="#9CA3AF" text-anchor="middle">SELECT * FROM queries WHERE power = 'unlimited'</text>
+</svg>
