@@ -224,7 +224,6 @@ module AppQuery
         .with_binds(**bind_vars)
     end
 
-
     def build_paginated_result(entries)
       return entries unless @page # No pagination requested
 
