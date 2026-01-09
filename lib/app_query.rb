@@ -674,22 +674,22 @@ module AppQuery
     # @param s [String, nil] optional SELECT to apply before extracting
     # @param format [:csv, :text, :binary] output format (default: :csv)
     # @param header [Boolean] include column headers (default: true, CSV only)
-    # @param delimiter [String] field delimiter (default: comma for CSV)
-    # @param to [String, IO, nil] destination - file path, IO object, or nil to return string
+    # @param delimiter [Symbol, nil] field delimiter - :tab, :comma, :pipe, :semicolon (default: format's default)
+    # @param dest [String, IO, nil] destination - file path, IO object, or nil to return string
     # @param binds [Hash] bind parameters
-    # @return [String, Integer, nil] CSV string if to: nil, bytes written if to: path, nil if to: IO
+    # @return [String, Integer, nil] CSV string if dest: nil, bytes written if dest: path, nil if dest: IO
     #
     # @example Return as string
     #   csv = AppQuery[:users].copy_to
     #
     # @example Write to file path
-    #   AppQuery[:users].copy_to(to: "export.csv")
+    #   AppQuery[:users].copy_to(dest: "export.csv")
     #
     # @example Write to IO object
-    #   File.open("export.csv", "w") { |f| query.copy_to(to: f) }
+    #   File.open("export.csv", "w") { |f| query.copy_to(dest: f) }
     #
     # @raise [AppQuery::Error] if adapter is not PostgreSQL
-    def copy_to(s = nil, format: :csv, header: true, delimiter: nil, to: nil, binds: {})
+    def copy_to(s = nil, format: :csv, header: true, delimiter: nil, dest: nil, binds: {})
       raw_conn = ActiveRecord::Base.connection.raw_connection
       unless raw_conn.respond_to?(:copy_data)
         raise Error, "copy_to requires PostgreSQL (current adapter does not support COPY)"
@@ -700,15 +700,24 @@ module AppQuery
         raise ArgumentError, "Invalid format: #{format.inspect}. Allowed: #{allowed_formats.join(", ")}"
       end
 
+      delimiters = {tab: "\t", comma: ",", pipe: "|", semicolon: ";"}
+      if delimiter
+        if !delimiters.key?(delimiter)
+          raise ArgumentError, "Invalid delimiter: #{delimiter.inspect}. Allowed: #{delimiters.keys.join(", ")}"
+        elsif format == :binary
+          raise ArgumentError, "Delimiter not allowed for format :binary"
+        end
+      end
+
       add_binds(**binds).with_select(s).render({}).then do |aq|
         options = ["FORMAT #{format.to_s.upcase}"]
         options << "HEADER" if header && format == :csv
-        options << "DELIMITER '#{delimiter.to_s.gsub("'", "''")}'" if delimiter
+        options << "DELIMITER E'#{delimiters[delimiter]}'" if delimiter
 
         inner_sql = ActiveRecord::Base.sanitize_sql_array([aq.to_s, aq.binds])
         copy_sql = "COPY (#{inner_sql}) TO STDOUT WITH (#{options.join(", ")})"
 
-        case to
+        case dest
         when NilClass
           output = +""
           raw_conn.copy_data(copy_sql) do
@@ -720,7 +729,7 @@ module AppQuery
           (format == :binary) ? output : output.force_encoding(Encoding::UTF_8)
         when String
           bytes = 0
-          File.open(to, "wb") do |f|
+          File.open(dest, "wb") do |f|
             raw_conn.copy_data(copy_sql) do
               while (row = raw_conn.get_copy_data)
                 bytes += f.write(row)
@@ -731,7 +740,7 @@ module AppQuery
         else
           raw_conn.copy_data(copy_sql) do
             while (row = raw_conn.get_copy_data)
-              to.write(row)
+              dest.write(row)
             end
           end
           nil

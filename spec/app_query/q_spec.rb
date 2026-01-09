@@ -706,7 +706,7 @@ RSpec.describe AppQuery::Q do
 
     it "writes to file path" do
       path = "tmp/export_test.csv"
-      bytes = app_query("SELECT * FROM export_test ORDER BY id").copy_to(to: path)
+      bytes = app_query("SELECT * FROM export_test ORDER BY id").copy_to(dest: path)
       expect(bytes).to be > 0
       expect(File.read(path)).to include("1,Alice")
     ensure
@@ -715,7 +715,7 @@ RSpec.describe AppQuery::Q do
 
     it "writes to IO object and returns nil" do
       io = StringIO.new
-      result = app_query("SELECT * FROM export_test ORDER BY id").copy_to(to: io)
+      result = app_query("SELECT * FROM export_test ORDER BY id").copy_to(dest: io)
       expect(result).to be_nil
       expect(io.string).to include("1,Alice")
     end
@@ -727,7 +727,7 @@ RSpec.describe AppQuery::Q do
     end
 
     it "supports custom delimiter" do
-      result = app_query("SELECT * FROM export_test ORDER BY id").copy_to(delimiter: "\t", header: false)
+      result = app_query("SELECT * FROM export_test ORDER BY id").copy_to(delimiter: :tab, header: false)
       expect(result).to include("1\tAlice")
     end
 
@@ -750,6 +750,12 @@ RSpec.describe AppQuery::Q do
     it "raises error for invalid format" do
       expect { app_query("SELECT 1").copy_to(format: :json) }.to raise_error(
         ArgumentError, /Invalid format: :json/
+      )
+    end
+
+    it "raises error for invalid delimiter" do
+      expect { app_query("SELECT 1").copy_to(delimiter: :colon) }.to raise_error(
+        ArgumentError, /Invalid delimiter: :colon/
       )
     end
   end
