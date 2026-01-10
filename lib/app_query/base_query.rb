@@ -154,11 +154,7 @@ module AppQuery
       end
     end
 
-    delegate :with_select, :select_all, :select_one, :count, :to_s, :column, :first, :ids, :copy_to, to: :query
-
-    def entries
-      select_all
-    end
+    delegate :entries, :with_select, :select_all, :select_one, :count, :to_s, :column, :first, :ids, :copy_to, to: :query
 
     def query
       @query ||= base_query

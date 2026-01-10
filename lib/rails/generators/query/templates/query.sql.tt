@@ -1,14 +1,8 @@
--- Instantiate this query with AppQuery[<%= (class_path << file_name).join("/").inspect %>]
-
-WITH
-  articles(article_id, article_title) AS (
-    VALUES (1, 'Some title'),
-           (2, 'Another article')
-  ),
-  authors(author_id, author_name) AS (
-    VALUES (1, 'Some Author'),
-           (2, 'Another Author')
-  )
-
-SELECT *
-FROM artciles
+WITH <%= file_name %>(id, name, active) AS (
+  VALUES (1, 'Some <%= file_name.singularize %>', true),
+         (2, 'Another <%= file_name.singularize %>', false)
+),
+active_<%= file_name %> AS (
+  SELECT * FROM <%= file_name %> WHERE active
+)
+SELECT * FROM active_<%= file_name %>
