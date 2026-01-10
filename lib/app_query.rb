@@ -688,6 +688,22 @@ module AppQuery
     # @example Write to IO object
     #   File.open("export.csv", "w") { |f| query.copy_to(dest: f) }
     #
+    # @example Export in Rails controller
+    #   respond_to do |format|
+    #      format.html do
+    #        @invoices = query.entries
+    #
+    #        render :index
+    #      end
+    #
+    #      format.csv do
+    #        response.headers['Content-Type'] = 'text/csv'
+    #        response.headers['Content-Disposition'] = 'attachment; filename="invoices.csv"'
+    #
+    #        query.unpaginated.copy_to(dest: response.stream)
+    #      end
+    #    end
+    #
     # @raise [AppQuery::Error] if adapter is not PostgreSQL
     def copy_to(s = nil, format: :csv, header: true, delimiter: nil, dest: nil, binds: {})
       raw_conn = ActiveRecord::Base.connection.raw_connection
