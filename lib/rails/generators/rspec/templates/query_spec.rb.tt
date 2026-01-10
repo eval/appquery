@@ -2,11 +2,12 @@
 
 require "rails_helper"
 
-RSpec.describe "AppQuery <%= (class_path << file_name).join("/") %>", type: :query, default_binds: nil do
-  describe "CTE articles" do
-    specify do
-      expect(select_all(select: "select * from :cte").cast_entries).to \
-        include(a_hash_including("article_id" => 1))
+RSpec.describe <%= class_name %>Query, type: :query do
+  subject(:query) { described_class.new }
+
+  describe "#entries" do
+    it "returns results" do
+      expect(query.entries).to be_an(Array)
     end
   end
 end

@@ -1,0 +1,7 @@
+# frozen_string_literal: true
+
+class ApplicationQuery < AppQuery::BaseQuery
+  # Include middleware for all queries:
+  # include AppQuery::Paginatable
+  # include AppQuery::Mappable
+end
