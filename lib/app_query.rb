@@ -127,13 +127,13 @@ module AppQuery
       @hash_rows = [] if columns.empty?
     end
 
-    def column(name = nil)
+    def column(name = nil, unique: false)
       return [] if empty?
       unless name.nil? || includes_column?(name)
         raise ArgumentError, "Unknown column #{name.inspect}. Should be one of #{columns.inspect}."
       end
       ix = name.nil? ? 0 : columns.index(name)
-      rows.map { _1[ix] }
+      rows.map { _1[ix] }.then { unique ? _1.uniq! : _1 }
     end
 
     def size
@@ -515,6 +515,7 @@ module AppQuery
     # @param c [String, Symbol] the column name to extract
     # @param s [String, nil] optional SELECT to apply before extracting
     # @param binds [Hash, nil] bind parameters to add
+    # @param unique [Boolean] whether to have unique values
     # @return [Array] the column values
     #
     # @example Extract a single column
@@ -524,9 +525,13 @@ module AppQuery
     # @example With additional filtering
     #   AppQuery("SELECT * FROM users").column(:email, "SELECT * FROM :_ WHERE active")
     #   # => ["alice@example.com", "bob@example.com"]
-    def column(c, s = nil, binds: {})
+    #
+    # @example Extract unique values
+    #   AppQuery("SELECT * FROM products").column(:category, unique: true)
+    #   # => ["Electronics", "Clothing", "Home"]
+    def column(c, s = nil, binds: {}, unique: false)
       quoted_column = ActiveRecord::Base.connection.quote_column_name(c)
-      with_select(s).select_all("SELECT #{quoted_column} AS column FROM :_", binds:).column("column")
+      with_select(s).select_all("SELECT #{unique ? "DISTINCT" : ""} #{quoted_column} AS column FROM :_", binds:).column("column")
     end
 
     # Returns an array of id values from the query.

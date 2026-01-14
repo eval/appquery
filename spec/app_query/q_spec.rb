@@ -46,6 +46,10 @@ RSpec.describe AppQuery::Q do
         WHERE published = :published
       SQL
     end
+
+    specify "with unique: true" do
+      expect(articles_query.column(:published, unique: true)).to contain_exactly(true, false)
+    end
   end
 
   describe "#any?", :db do
