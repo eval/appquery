@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 
+# Check for entr (required for file watching)
+if ! command -v entr &> /dev/null; then
+  echo "Error: 'entr' is required for file watching but not installed."
+  echo ""
+  echo "Install with:"
+  echo "  brew install entr    # macOS"
+  echo "  apt install entr     # Debian/Ubuntu"
+  echo ""
+  exit 1
+fi
+
 # Generate initial docs
 bundle exec yard doc
 
