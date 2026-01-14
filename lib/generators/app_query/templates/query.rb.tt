@@ -2,7 +2,8 @@
 
 <% module_namespacing do -%>
 class <%= class_name %>Query < ApplicationQuery
-  bind :supplier_id, default: nil
-  var :admin, default: false
+  # bind :user_id              # SQL: WHERE user_id = :user_id
+  # var :admin, default: false # ERB: <%% if @admin %>
+  # cast published_at: :date   # Cast column to Ruby type
 end
 <% end -%>
