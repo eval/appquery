@@ -569,7 +569,8 @@ module AppQuery
     #   # => ["Electronics", "Clothing", "Home"]
     def column(c, s = nil, binds: {}, unique: false)
       quoted_column = ActiveRecord::Base.connection.quote_column_name(c)
-      with_select(s).select_all("SELECT #{unique ? "DISTINCT" : ""} #{quoted_column} AS column FROM :_", binds:).column("column")
+      select_expr = unique ? "DISTINCT #{quoted_column}" : quoted_column
+      with_select(s).select_all("SELECT #{select_expr} AS column FROM :_", binds:).column("column")
     end
 
     # Returns the column names from the query without fetching any rows.
