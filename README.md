@@ -87,6 +87,8 @@ That introduces new problems: the not-so-intuitive `select_all`/`select_one`/`se
 - Easy inspection and testing—especially for CTE-based queries
 - Clean parameterization via named binds and ERB
 
+Read [this blog post](https://www.gertgoet.com/appquery.html) for additional context and an overview.
+
 ## Installation
 
 ```bash
@@ -116,6 +118,31 @@ Execute it:
 AppQuery[:weekly_sales].select_all(binds: {week: 1, year: 2025})
 #=> [{"week" => 1, "category" => "Electronics", "revenue" => 12500}, ...]
 ```
+
+Even better:
+
+Use the query-class and define binds, vars, casts, middleware etc.
+
+```ruby
+class WeeklySalesQuery < ApplicationQuery
+  include AppQuery::Paginatable
+  per_page 25
+
+  bind :week
+  bind :year, default: 2026
+
+  cast metadata: :json
+
+  # add factory methods for specific purposes
+  def self.build(page: 1, week:, year: 2026)
+    new(week:, year:).paginate(page:)
+  end
+end
+
+WeeklySalesQuery.build(week: 1).entries
+```
+
+Read more about the query-class in [the API docs](https://eval.github.io/appquery/AppQuery/BaseQuery.html).
 
 ## Usage
 
