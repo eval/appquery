@@ -72,6 +72,18 @@ RSpec.describe AppQuery do
     end
   end
 
+  describe "::table", :db do
+    specify "creates query selecting from table" do
+      q = described_class.table(:products)
+      expect(q.to_s).to eq('SELECT * FROM "products"')
+    end
+
+    specify "can be chained with other methods" do
+      # pg_tables is a system view that always exists
+      expect(described_class.table(:pg_tables).any?).to be true
+    end
+  end
+
   describe "configuration" do
     before { described_class.reset_configuration! }
 

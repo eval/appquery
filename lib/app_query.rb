@@ -116,6 +116,26 @@ module AppQuery
     Q.new(full_path.read, name: "AppQuery #{query_name}", filename: full_path.to_s, **opts)
   end
 
+  # Creates a query that selects all columns from a table.
+  #
+  # Convenience method for quickly querying a table without writing SQL.
+  #
+  # @param name [Symbol, String] the table name
+  # @param opts [Hash] additional options passed to {Q#initialize}
+  # @return [Q] a new query object selecting from the table
+  #
+  # @example Basic usage
+  #   AppQuery.table(:products).count
+  #   AppQuery.table(:products).take(5)
+  #
+  # @example With binds
+  #   AppQuery.table(:users, binds: {active: true})
+  #     .select_all("SELECT * FROM :_ WHERE active = :active")
+  def self.table(name, **opts)
+    quoted = ActiveRecord::Base.connection.quote_table_name(name)
+    Q.new("SELECT * FROM #{quoted}", name: "AppQuery.table(#{name})", **opts)
+  end
+
   class Result < ActiveRecord::Result
     attr_accessor :cast
     alias_method :cast?, :cast
@@ -825,8 +845,12 @@ module AppQuery
     # @example
     #   AppQuery("WITH a AS (SELECT 1), b AS (SELECT 2) SELECT * FROM a, b").cte_names
     #   # => ["a", "b"]
+    #
+    # @example Quoted identifiers are returned without quotes
+    #   AppQuery('WITH "special*name" AS (SELECT 1) SELECT * FROM "special*name"').cte_names
+    #   # => ["special*name"]
     def cte_names
-      tokens.filter { _1[:t] == "CTE_IDENTIFIER" }.map { _1[:v] }
+      tokens.filter { _1[:t] == "CTE_IDENTIFIER" }.map { _1[:v].delete_prefix('"').delete_suffix('"') }
     end
 
     # @!group Query Transformation
@@ -946,6 +970,30 @@ module AppQuery
     end
 
     # @!group CTE Manipulation
+
+    # Returns a new query focused on the specified CTE.
+    #
+    # Wraps the query to select from the named CTE, allowing you to
+    # inspect or test individual CTEs in isolation.
+    #
+    # @param name [Symbol, String] the CTE name to select from
+    # @return [Q] a new query selecting from the CTE
+    # @raise [ArgumentError] if the CTE doesn't exist
+    #
+    # @example Focus on a specific CTE
+    #   query = AppQuery("WITH published AS (SELECT * FROM articles WHERE published) SELECT * FROM published")
+    #   query.cte(:published).entries
+    #
+    # @example Chain with other methods
+    #   ArticleQuery.new.cte(:active_articles).take(5)
+    def cte(name)
+      name = name.to_s
+      unless cte_names.include?(name)
+        raise ArgumentError, "Unknown CTE #{name.inspect}. Available: #{cte_names.inspect}"
+      end
+      quoted = ActiveRecord::Base.connection.quote_table_name(name)
+      with_select("SELECT * FROM #{quoted}")
+    end
 
     # Prepends a CTE to the beginning of the WITH clause.
     #

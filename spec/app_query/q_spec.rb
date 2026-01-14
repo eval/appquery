@@ -81,6 +81,24 @@ RSpec.describe AppQuery::Q do
     end
   end
 
+  describe "#cte", :db do
+    specify "focuses on the named CTE" do
+      expect(articles_query.cte(:articles).count).to eq(3)
+    end
+
+    specify "raises for unknown CTE" do
+      expect { articles_query.cte(:unknown) }.to raise_error(ArgumentError, /Unknown CTE/)
+    end
+
+    specify "handles quoted CTE names" do
+      q = app_query(<<~SQL)
+        WITH "special*name" AS (SELECT 1 AS n)
+        SELECT * FROM "special*name"
+      SQL
+      expect(q.cte("special*name").count).to eq(1)
+    end
+  end
+
   describe "#any?", :db do
     specify "without select" do
       expect(articles_query.any?).to be
@@ -390,7 +408,11 @@ RSpec.describe AppQuery::Q do
     it "shows the correct names in the original order" do
       expect(app_query("")).to have_attributes(cte_names: match([]))
       expect(app_query("with foo as(select 1), bar as(select 2)")).to have_attributes(cte_names: match(%w[foo bar]))
-      expect(app_query(%[with "foo" as(select 1), bar as(select 2)])).to have_attributes(cte_names: match(%w["foo" bar]))
+    end
+
+    it "strips quotes from quoted identifiers" do
+      expect(app_query(%[with "foo" as(select 1), bar as(select 2)])).to have_attributes(cte_names: match(%w[foo bar]))
+      expect(app_query(%[with "special*name" as(select 1)])).to have_attributes(cte_names: ["special*name"])
     end
   end
 

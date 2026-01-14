@@ -48,11 +48,7 @@ module AppQuery
       #   expect(described_query(user_id: 123).entries).to include(...)
       def described_query(**kwargs)
         query = build_query(**kwargs)
-        if cte_name
-          query.query.with_select("SELECT * FROM #{cte_name}")
-        else
-          query
-        end
+        cte_name ? query.query.cte(cte_name) : query
       end
 
       # Builds the query instance. Override this to customize instantiation.
@@ -89,6 +85,10 @@ module AppQuery
         self.class.cte_name
       end
 
+      def self.included(klass)
+        klass.extend(ClassMethods)
+      end
+
       private
 
       def metadata_value(key)
@@ -118,10 +118,6 @@ module AppQuery
         def descriptions
           metadatas.map { _1[:description] }
         end
-      end
-
-      def self.included(klass)
-        klass.extend(ClassMethods)
       end
     end
   end
