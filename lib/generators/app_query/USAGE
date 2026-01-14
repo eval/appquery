@@ -1,0 +1,28 @@
+Description:
+    Generates a query class with SQL file and spec.
+
+    Also generates ApplicationQuery if it doesn't exist.
+
+Example:
+    rails generate app_query:query products
+    rails generate query products  # shorthand alias
+
+    This creates:
+        Base:   app/queries/application_query.rb (if not exists)
+        Class:  app/queries/products_query.rb
+        SQL:    app/queries/products.sql
+        Spec:   spec/queries/products_query_spec.rb
+
+    With namespace:
+        rails generate query admin/reports
+
+    Creates:
+        Class:  app/queries/admin/reports_query.rb
+        SQL:    app/queries/admin/reports.sql
+        Spec:   spec/queries/admin/reports_query_spec.rb
+
+See also:
+    rails generate app_query:example
+
+    Generates a fully annotated example query demonstrating
+    binds, vars, CTEs, and RSpec testing patterns.

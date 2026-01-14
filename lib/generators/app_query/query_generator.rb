@@ -3,6 +3,12 @@
 module AppQuery
   module Generators
     class QueryGenerator < Rails::Generators::NamedBase
+      desc <<~DESC
+        Generates a query class with SQL file and spec.
+
+        See also:
+          rails generate query --help
+      DESC
       source_root File.expand_path("templates", __dir__)
 
       def create_application_query

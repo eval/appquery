@@ -3,6 +3,12 @@
 module AppQuery
   module Generators
     class ExampleGenerator < Rails::Generators::Base
+      desc <<~DESC
+        Generates annotated example query demonstrating binds, vars, CTEs, and testing patterns.
+
+        See also:
+          rails generate query --help
+      DESC
       source_root File.expand_path("templates", __dir__)
 
       def create_application_query
