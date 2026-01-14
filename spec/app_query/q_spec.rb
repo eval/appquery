@@ -64,6 +64,24 @@ RSpec.describe AppQuery::Q do
     end
   end
 
+  describe "#take_last", :db do
+    specify "returns last n rows" do
+      result = articles_query.take_last(2)
+      expect(result.size).to eq(2)
+      expect(result.map { _1["title"] }).to eq(%w[Second Third])
+    end
+
+    specify "returns empty array for empty result" do
+      result = articles_query.take_last(2, "SELECT * FROM :_ WHERE false")
+      expect(result).to eq([])
+    end
+
+    specify "handles n larger than result size" do
+      result = articles_query.take_last(10)
+      expect(result.size).to eq(3)
+    end
+  end
+
   describe "#column", :db do
     specify "quotes the column name" do
       expect(ActiveRecord::Base.connection).to receive(:quote_column_name).with("title").and_call_original

@@ -511,10 +511,7 @@ module AppQuery
     #
     # @see #first
     def last(s = nil, binds: {}, cast: self.cast)
-      with_select(s).select_all(
-        "SELECT * FROM :_ LIMIT 1 OFFSET GREATEST((SELECT COUNT(*) FROM :_) - 1, 0)",
-        binds:, cast:
-      ).first
+      take_last(1, s, binds:, cast:).first
     end
 
     # Executes the query and returns the first n rows.
@@ -534,6 +531,30 @@ module AppQuery
       with_select(s).select_all("SELECT * FROM :_ LIMIT #{n.to_i}", binds:, cast:).entries
     end
     alias_method :limit, :take
+
+    # Executes the query and returns the last n rows.
+    #
+    # Uses OFFSET to skip to the last n rows without changing the query order.
+    # Note: This requires counting all rows first, so it's less efficient
+    # than {#take} for large result sets.
+    #
+    # @param n [Integer] the number of rows to return
+    # @param s [String, nil] optional SELECT to apply before taking
+    # @param binds [Hash, nil] bind parameters to add
+    # @param cast [Boolean, Hash, Array] type casting configuration
+    # @return [Array<Hash>] the last n rows as an array of hashes
+    #
+    # @example
+    #   AppQuery("SELECT * FROM users ORDER BY created_at").take_last(5)
+    #   # => [{"id" => 38, ...}, {"id" => 39, ...}, ...]
+    #
+    # @see #last
+    def take_last(n, s = nil, binds: {}, cast: self.cast)
+      with_select(s).select_all(
+        "SELECT * FROM :_ LIMIT #{n.to_i} OFFSET GREATEST((SELECT COUNT(*) FROM :_) - #{n.to_i}, 0)",
+        binds:, cast:
+      ).entries
+    end
 
     # Executes the query and returns the first value of the first row.
     #
