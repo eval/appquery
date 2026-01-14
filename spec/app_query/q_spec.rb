@@ -48,6 +48,22 @@ RSpec.describe AppQuery::Q do
     end
   end
 
+  describe "#last", :db do
+    specify "returns the last row" do
+      expect(articles_query.last).to include("title" => "Third")
+    end
+
+    specify "returns nil for empty result" do
+      result = articles_query.last("SELECT * FROM :_ WHERE false")
+      expect(result).to be_nil
+    end
+
+    specify "with select" do
+      result = articles_query.last("SELECT * FROM :_ WHERE published = true")
+      expect(result).to include("title" => "Third")
+    end
+  end
+
   describe "#column", :db do
     specify "quotes the column name" do
       expect(ActiveRecord::Base.connection).to receive(:quote_column_name).with("title").and_call_original

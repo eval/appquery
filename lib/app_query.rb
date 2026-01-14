@@ -472,6 +472,29 @@ module AppQuery
     end
     alias_method :first, :select_one
 
+    # Executes the query and returns the last row.
+    #
+    # Uses OFFSET to skip to the last row without changing the query order.
+    # Note: This requires counting all rows first, so it's less efficient
+    # than {#first} for large result sets.
+    #
+    # @param s [String, nil] optional SELECT to apply before fetching
+    # @param binds [Hash, nil] bind parameters to add
+    # @param cast [Boolean, Hash, Array] type casting configuration
+    # @return [Hash, nil] the last row as a hash, or nil if no results
+    #
+    # @example
+    #   AppQuery("SELECT * FROM users ORDER BY created_at").last
+    #   # => {"id" => 42, "name" => "Zoe"}
+    #
+    # @see #first
+    def last(s = nil, binds: {}, cast: self.cast)
+      with_select(s).select_all(
+        "SELECT * FROM :_ LIMIT 1 OFFSET GREATEST((SELECT COUNT(*) FROM :_) - 1, 0)",
+        binds:, cast:
+      ).first
+    end
+
     # Executes the query and returns the first n rows.
     #
     # @param n [Integer] the number of rows to return
