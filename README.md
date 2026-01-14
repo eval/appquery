@@ -254,7 +254,7 @@ Generated spec files include helpers:
 RSpec.describe Reports::WeeklyQuery, type: :query, binds: {since: 3.weeks.ago} do
   describe "CTE articles" do
     specify do
-      expect(described_query).to \
+      expect(described_query.entries).to \
         include(a_hash_including("article_id" => 1))
     end
   end
