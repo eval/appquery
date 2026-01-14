@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## 0.8.0
+
+**Releasedate**: 14-1-2026  
+**Rubygems**: https://rubygems.org/gems/appquery/versions/0.8.0  
+
 ### 💥 Breaking Changes
 
 - ⚠️ **RSpec helpers refactored**  
