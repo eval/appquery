@@ -243,24 +243,25 @@ File.open("users.csv.gz", "wb") do |f|
 end
 ```
 
+See [the method docs](https://eval.github.io/appquery/AppQuery/Q.html#copy_to-instance_method) for more (Rails) examples.
+
 ### RSpec Integration
 
 Generated spec files include helpers:
 
 ```ruby
 # spec/queries/reports/weekly_query_spec.rb
-RSpec.describe "AppQuery reports/weekly", type: :query, default_binds: [] do
+RSpec.describe Reports::WeeklyQuery, type: :query, binds: {since: 3.weeks.ago} do
   describe "CTE articles" do
     specify do
-      expect(described_query.select_all("SELECT * FROM :cte")).to \
+      expect(described_query).to \
         include(a_hash_including("article_id" => 1))
-
-      # Short version: query, cte and select are implied from descriptions
-      expect(select_all).to include(a_hash_including("article_id" => 1))
     end
   end
 end
 ```
+
+See [the API docs](https://eval.github.io/appquery/AppQuery/RSpec/Helpers.html) for more RSpec examples.
 
 ## API Documentation
 
@@ -289,6 +290,9 @@ bin/run rails_head console
 
 # Run tests
 rake spec
+
+# YARD with reload (requires entr and overmind/foreman)
+bin/yard-dev
 ```
 
 Using [mise](https://mise.jdx.dev/) for env-vars is recommended.
