@@ -37,7 +37,7 @@ RSpec.describe ExampleQuery, type: :query do
     end
 
     it "has the expected columns" do
-      expect(described_query.entries.first.keys).to contain_exactly(
+      expect(described_query.columns).to contain_exactly(
         "id", "name", "supplier_id", "active"
       )
     end
@@ -79,8 +79,7 @@ RSpec.describe ExampleQuery, type: :query do
     end
 
     it "includes products from multiple suppliers" do
-      supplier_ids = described_query.entries.map { _1["supplier_id"] }.uniq
-      expect(supplier_ids.size).to be > 1
+      expect(described_query.column(:supplier_id, unique: true).count).to be > 1
     end
   end
 
