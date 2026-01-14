@@ -1,6 +1,8 @@
-module Rails
+# frozen_string_literal: true
+
+module AppQuery
   module Generators
-    class QueryGenerator < NamedBase
+    class ExampleGenerator < Rails::Generators::Base
       source_root File.expand_path("templates", __dir__)
 
       def create_application_query
@@ -9,22 +11,17 @@ module Rails
         template "application_query.rb", application_query_path
       end
 
-      def create_query_class
-        template "query.rb",
-          File.join(query_path, class_path, "#{file_name}_query.rb")
+      def create_example_files
+        template "example_query.rb", File.join(query_path, "example_query.rb")
+        template "example.sql.erb", File.join(query_path, "example.sql.erb")
       end
 
-      def create_query_file
-        template "query.sql",
-          File.join(query_path, class_path, "#{file_name}.sql")
-      end
-
-      hook_for :test_framework
+      hook_for :test_framework, as: :app_query_example
 
       private
 
       def query_path
-        AppQuery.configuration.query_path
+        ::AppQuery.configuration.query_path
       end
 
       def application_query_path

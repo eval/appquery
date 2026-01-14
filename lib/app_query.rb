@@ -1062,3 +1062,4 @@ rescue LoadError
 end
 
 require_relative "app_query/rspec" if Object.const_defined? :RSpec
+require_relative "app_query/railtie" if defined?(Rails::Railtie)

@@ -1,0 +1,29 @@
+# frozen_string_literal: true
+
+require "rails_helper"
+
+RSpec.describe <%= class_name %>Query, type: :query do
+  describe "cte <%= file_name %>" do
+    it "contains all <%= file_name %>" do
+      expect(described_query.entries.size).to eq(3)
+    end
+  end
+
+  describe "cte active_<%= file_name %>" do
+    it "only contains active <%= file_name %>" do
+      expect(described_query.entries).to all(include("active" => true))
+    end
+  end
+
+  describe "with supplier_id", binds: {supplier_id: 100} do
+    it "returns only <%= file_name %> for that supplier" do
+      expect(described_query.entries).to all(include("supplier_id" => 100))
+    end
+  end
+
+  describe "as admin", vars: {admin: true} do
+    it "returns all active <%= file_name %> regardless of supplier" do
+      expect(described_query.entries.size).to eq(2)
+    end
+  end
+end

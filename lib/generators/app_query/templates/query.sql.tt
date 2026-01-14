@@ -1,0 +1,12 @@
+WITH <%= file_name %>(id, name, supplier_id, active) AS (
+  VALUES (1, 'Some <%= file_name.singularize %>', 100, true),
+         (2, 'Another <%= file_name.singularize %>', 100, false),
+         (3, 'Third <%= file_name.singularize %>', 200, true)
+),
+active_<%= file_name %> AS (
+  SELECT * FROM <%= file_name %> WHERE active
+)
+SELECT * FROM active_<%= file_name %>
+<%% unless @admin -%>
+WHERE supplier_id = :supplier_id
+<%% end -%>

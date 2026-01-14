@@ -1,8 +1,0 @@
-WITH <%= file_name %>(id, name, active) AS (
-  VALUES (1, 'Some <%= file_name.singularize %>', true),
-         (2, 'Another <%= file_name.singularize %>', false)
-),
-active_<%= file_name %> AS (
-  SELECT * FROM <%= file_name %> WHERE active
-)
-SELECT * FROM active_<%= file_name %>
