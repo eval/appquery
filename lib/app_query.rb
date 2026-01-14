@@ -646,13 +646,13 @@ module AppQuery
     # @return [Array<String>] the column names
     #
     # @example Get column names
-    #   AppQuery("SELECT id, name, email FROM users").columns
+    #   AppQuery("SELECT id, name, email FROM users").column_names
     #   # => ["id", "name", "email"]
     #
     # @example From a CTE
-    #   AppQuery("WITH t(a, b) AS (VALUES (1, 2)) SELECT * FROM t").columns
+    #   AppQuery("WITH t(a, b) AS (VALUES (1, 2)) SELECT * FROM t").column_names
     #   # => ["a", "b"]
-    def columns(s = nil, binds: {})
+    def column_names(s = nil, binds: {})
       with_select(s).select_all("SELECT * FROM :_ LIMIT 0", binds:).columns
     end
 
