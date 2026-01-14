@@ -166,8 +166,30 @@ module AppQuery
       @hash_rows = [] if columns.empty?
     end
 
+    # Returns an array of values for a single column.
+    #
+    # @note If you only need a single column, prefer {Q#column} which selects
+    #   only that column from the database, avoiding fetching all columns.
+    #
+    # @param name [String, Symbol, nil] the column name (nil returns first column)
+    # @param unique [Boolean] whether to return only unique values
+    # @return [Array] the column values
+    # @raise [ArgumentError] if the column doesn't exist
+    #
+    # @example Get values by column name
+    #   result.column(:name)        # => ["Alice", "Bob"]
+    #   result.column("name")       # => ["Alice", "Bob"]
+    #
+    # @example Get first column (no name)
+    #   result.column               # => [1, 2, 3]
+    #
+    # @example Get unique values
+    #   result.column(:status, unique: true)  # => ["active", "pending"]
+    #
+    # @see Q#column
     def column(name = nil, unique: false)
       return [] if empty?
+      name = name&.to_s
       unless name.nil? || includes_column?(name)
         raise ArgumentError, "Unknown column #{name.inspect}. Should be one of #{columns.inspect}."
       end

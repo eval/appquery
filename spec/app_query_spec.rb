@@ -97,4 +97,26 @@ RSpec.describe AppQuery do
       expect(described_class.configuration).to have_attributes("query_path" => "app/queries")
     end
   end
+
+  describe AppQuery::Result do
+    let(:result) { described_class.new(%w[id name], [[1, "Alice"], [2, "Bob"]]) }
+
+    describe "#column" do
+      specify "accepts string" do
+        expect(result.column("name")).to eq(%w[Alice Bob])
+      end
+
+      specify "accepts symbol" do
+        expect(result.column(:name)).to eq(%w[Alice Bob])
+      end
+
+      specify "returns first column when no name given" do
+        expect(result.column).to eq([1, 2])
+      end
+
+      specify "raises for unknown column" do
+        expect { result.column(:unknown) }.to raise_error(ArgumentError, /Unknown column/)
+      end
+    end
+  end
 end
