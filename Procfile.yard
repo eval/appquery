@@ -1,0 +1,4 @@
+# YARD development server with auto-rebuild
+# Usage: bin/yard-dev
+web: ruby -run -ehttpd doc -p8809
+watch: find lib README.md -name '*.rb' -o -name '*.md' | entr -s 'bundle exec yard doc'

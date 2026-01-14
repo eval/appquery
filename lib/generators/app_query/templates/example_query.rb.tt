@@ -1,0 +1,37 @@
+# frozen_string_literal: true
+
+# ExampleQuery demonstrates all AppQuery::BaseQuery features.
+#
+# Usage:
+#   ExampleQuery.new(supplier_id: 1).entries
+#   ExampleQuery.new(supplier_id: 1, admin: true).entries
+#   ExampleQuery.new(supplier_id: 1).query.to_s  # inspect SQL
+#
+# Delete this file once you're familiar with the patterns.
+#
+class ExampleQuery < ApplicationQuery
+  # == Binds
+  #
+  # Bind parameters are safe from SQL injection. Use for WHERE clauses.
+  # In SQL: WHERE supplier_id = :supplier_id
+  #
+  bind :supplier_id, default: nil
+
+  # == Vars
+  #
+  # Template variables for dynamic SQL generation (ERB).
+  # In SQL: <%% if @admin %>...<%% end %>
+  #
+  # WARNING: vars are NOT safe from injection - only use for trusted values
+  # like sorting options, not user input.
+  #
+  var :admin, default: false
+
+  # == Casts
+  #
+  # Automatically cast result columns to Ruby types.
+  # Supported: :date, :datetime, :time, :integer, :float, :decimal,
+  #            :boolean, :json, :array (PostgreSQL)
+  #
+  # cast metadata: :json, published_at: :datetime
+end

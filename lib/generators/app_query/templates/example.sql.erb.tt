@@ -1,0 +1,41 @@
+-- =============================================================================
+-- ExampleQuery SQL Template
+--
+-- This file demonstrates AppQuery SQL patterns. Delete once familiar.
+--
+-- Key concepts:
+-- - CTEs (WITH clauses) for organizing complex queries
+-- - ∶bind_name for safe parameter binding
+-- - ERB for conditional SQL generation
+-- =============================================================================
+
+-- == CTEs (Common Table Expressions)
+-- Break complex queries into readable, testable pieces.
+-- Each CTE can be tested independently in specs.
+WITH products(id, name, supplier_id, active) AS (
+  -- In real code, this would be: SELECT * FROM products
+  VALUES (1, 'Widget', 100, true),
+         (2, 'Gadget', 100, false),
+         (3, 'Gizmo', 200, true)
+),
+-- == Derived CTEs
+-- Build on previous CTEs to filter/transform data.
+active_products AS (
+  SELECT * FROM products WHERE active
+)
+-- == Final SELECT
+-- The main query that uses the CTEs above.
+SELECT * FROM active_products
+-- == Conditional SQL with ERB
+-- Use vars (like @admin) to conditionally include SQL.
+-- Remember: vars are for trusted values only, not user input!
+<%% unless @admin -%>
+  -- == Bind Parameters
+  -- Use :name syntax for safe parameter binding.
+  -- Binds are defined in the query class with `bind :supplier_id`.
+  -- non-admins: MUST bring supplier_id
+  WHERE (:supplier_id::INTEGER IS NOT NULL AND supplier_id = :supplier_id)
+<%% else -%>
+  -- admin: MAY bring supplier_id
+  WHERE (:supplier_id::INTEGER IS NULL OR supplier_id = :supplier_id)
+<%% end -%>

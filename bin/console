@@ -82,7 +82,7 @@ def reload!
     app_query/tokenizer.rb
     app_query/render_helpers.rb
     app_query.rb
-    app_query/base.rb
+    app_query/base_query.rb
   ].each { |f| load File.join(root, f) }
   true
 end

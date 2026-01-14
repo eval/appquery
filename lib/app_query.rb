@@ -73,6 +73,26 @@ module AppQuery
   end
   reset_configuration!
 
+  # @!group Quoting Helpers
+
+  # Quotes a table name for safe use in SQL.
+  #
+  # @param name [String, Symbol] the table name
+  # @return [String] the quoted table name
+  def self.quote_table(name)
+    ActiveRecord::Base.connection.quote_table_name(name)
+  end
+
+  # Quotes a column name for safe use in SQL.
+  #
+  # @param name [String, Symbol] the column name
+  # @return [String] the quoted column name
+  def self.quote_column(name)
+    ActiveRecord::Base.connection.quote_column_name(name)
+  end
+
+  # @!endgroup
+
   # Loads a query from a file in the configured query path.
   #
   # When no extension is provided, tries `.sql` first, then `.sql.erb`.
@@ -116,6 +136,25 @@ module AppQuery
     Q.new(full_path.read, name: "AppQuery #{query_name}", filename: full_path.to_s, **opts)
   end
 
+  # Creates a query that selects all columns from a table.
+  #
+  # Convenience method for quickly querying a table without writing SQL.
+  #
+  # @param name [Symbol, String] the table name
+  # @param opts [Hash] additional options passed to {Q#initialize}
+  # @return [Q] a new query object selecting from the table
+  #
+  # @example Basic usage
+  #   AppQuery.table(:products).count
+  #   AppQuery.table(:products).take(5)
+  #
+  # @example With binds
+  #   AppQuery.table(:users, binds: {active: true})
+  #     .select_all("SELECT * FROM :_ WHERE active = :active")
+  def self.table(name, **opts)
+    Q.new("SELECT * FROM #{quote_table(name)}", name: "AppQuery.table(#{name})", **opts)
+  end
+
   class Result < ActiveRecord::Result
     attr_accessor :cast
     alias_method :cast?, :cast
@@ -127,13 +166,35 @@ module AppQuery
       @hash_rows = [] if columns.empty?
     end
 
-    def column(name = nil)
+    # Returns an array of values for a single column.
+    #
+    # @note If you only need a single column, prefer {Q#column} which selects
+    #   only that column from the database, avoiding fetching all columns.
+    #
+    # @param name [String, Symbol, nil] the column name (nil returns first column)
+    # @param unique [Boolean] whether to return only unique values
+    # @return [Array] the column values
+    # @raise [ArgumentError] if the column doesn't exist
+    #
+    # @example Get values by column name
+    #   result.column(:name)        # => ["Alice", "Bob"]
+    #   result.column("name")       # => ["Alice", "Bob"]
+    #
+    # @example Get first column (no name)
+    #   result.column               # => [1, 2, 3]
+    #
+    # @example Get unique values
+    #   result.column(:status, unique: true)  # => ["active", "pending"]
+    #
+    # @see Q#column
+    def column(name = nil, unique: false)
       return [] if empty?
+      name = name&.to_s
       unless name.nil? || includes_column?(name)
         raise ArgumentError, "Unknown column #{name.inspect}. Should be one of #{columns.inspect}."
       end
       ix = name.nil? ? 0 : columns.index(name)
-      rows.map { _1[ix] }
+      rows.map { _1[ix] }.then { unique ? _1.uniq! : _1 }
     end
 
     def size
@@ -184,7 +245,7 @@ module AppQuery
 
     def self.from_ar_result(r, cast = nil)
       if r.empty?
-        EMPTY
+        r.columns.empty? ? EMPTY : new(r.columns, [], r.column_types)
       else
         cast &&= case cast
         when Array
@@ -433,6 +494,68 @@ module AppQuery
     end
     alias_method :first, :select_one
 
+    # Executes the query and returns the last row.
+    #
+    # Uses OFFSET to skip to the last row without changing the query order.
+    # Note: This requires counting all rows first, so it's less efficient
+    # than {#first} for large result sets.
+    #
+    # @param s [String, nil] optional SELECT to apply before fetching
+    # @param binds [Hash, nil] bind parameters to add
+    # @param cast [Boolean, Hash, Array] type casting configuration
+    # @return [Hash, nil] the last row as a hash, or nil if no results
+    #
+    # @example
+    #   AppQuery("SELECT * FROM users ORDER BY created_at").last
+    #   # => {"id" => 42, "name" => "Zoe"}
+    #
+    # @see #first
+    def last(s = nil, binds: {}, cast: self.cast)
+      take_last(1, s, binds:, cast:).first
+    end
+
+    # Executes the query and returns the first n rows.
+    #
+    # @param n [Integer] the number of rows to return
+    # @param s [String, nil] optional SELECT to apply before taking
+    # @param binds [Hash, nil] bind parameters to add
+    # @param cast [Boolean, Hash, Array] type casting configuration
+    # @return [Array<Hash>] the first n rows as an array of hashes
+    #
+    # @example
+    #   AppQuery("SELECT * FROM users ORDER BY created_at").take(5)
+    #   # => [{"id" => 1, ...}, {"id" => 2, ...}, ...]
+    #
+    # @see #first
+    def take(n, s = nil, binds: {}, cast: self.cast)
+      with_select(s).select_all("SELECT * FROM :_ LIMIT #{n.to_i}", binds:, cast:).entries
+    end
+    alias_method :limit, :take
+
+    # Executes the query and returns the last n rows.
+    #
+    # Uses OFFSET to skip to the last n rows without changing the query order.
+    # Note: This requires counting all rows first, so it's less efficient
+    # than {#take} for large result sets.
+    #
+    # @param n [Integer] the number of rows to return
+    # @param s [String, nil] optional SELECT to apply before taking
+    # @param binds [Hash, nil] bind parameters to add
+    # @param cast [Boolean, Hash, Array] type casting configuration
+    # @return [Array<Hash>] the last n rows as an array of hashes
+    #
+    # @example
+    #   AppQuery("SELECT * FROM users ORDER BY created_at").take_last(5)
+    #   # => [{"id" => 38, ...}, {"id" => 39, ...}, ...]
+    #
+    # @see #last
+    def take_last(n, s = nil, binds: {}, cast: self.cast)
+      with_select(s).select_all(
+        "SELECT * FROM :_ LIMIT #{n.to_i} OFFSET GREATEST((SELECT COUNT(*) FROM :_) - #{n.to_i}, 0)",
+        binds:, cast:
+      ).entries
+    end
+
     # Executes the query and returns the first value of the first row.
     #
     # @param binds [Hash, nil] named bind parameters
@@ -515,6 +638,7 @@ module AppQuery
     # @param c [String, Symbol] the column name to extract
     # @param s [String, nil] optional SELECT to apply before extracting
     # @param binds [Hash, nil] bind parameters to add
+    # @param unique [Boolean] whether to have unique values
     # @return [Array] the column values
     #
     # @example Extract a single column
@@ -524,9 +648,33 @@ module AppQuery
     # @example With additional filtering
     #   AppQuery("SELECT * FROM users").column(:email, "SELECT * FROM :_ WHERE active")
     #   # => ["alice@example.com", "bob@example.com"]
-    def column(c, s = nil, binds: {})
-      quoted_column = ActiveRecord::Base.connection.quote_column_name(c)
-      with_select(s).select_all("SELECT #{quoted_column} AS column FROM :_", binds:).column("column")
+    #
+    # @example Extract unique values
+    #   AppQuery("SELECT * FROM products").column(:category, unique: true)
+    #   # => ["Electronics", "Clothing", "Home"]
+    def column(c, s = nil, binds: {}, unique: false)
+      quoted = quote_column(c)
+      select_expr = unique ? "DISTINCT #{quoted}" : quoted
+      with_select(s).select_all("SELECT #{select_expr} AS column FROM :_", binds:).column("column")
+    end
+
+    # Returns the column names from the query without fetching any rows.
+    #
+    # Uses `LIMIT 0` to get column metadata efficiently.
+    #
+    # @param s [String, nil] optional SELECT to apply before extracting
+    # @param binds [Hash, nil] bind parameters to add
+    # @return [Array<String>] the column names
+    #
+    # @example Get column names
+    #   AppQuery("SELECT id, name, email FROM users").column_names
+    #   # => ["id", "name", "email"]
+    #
+    # @example From a CTE
+    #   AppQuery("WITH t(a, b) AS (VALUES (1, 2)) SELECT * FROM t").column_names
+    #   # => ["a", "b"]
+    def column_names(s = nil, binds: {})
+      with_select(s).select_all("SELECT * FROM :_ LIMIT 0", binds:).columns
     end
 
     # Returns an array of id values from the query.
@@ -570,11 +718,6 @@ module AppQuery
     # @param binds [Hash, nil] bind parameters for the query
     # @param returning [String, nil] columns to return (Rails 7.1+ only)
     # @return [Integer, Object] the inserted ID or returning value
-    #
-    # @example With positional binds
-    #   AppQuery(<<~SQL).insert(binds: ["Let's learn SQL!"])
-    #     INSERT INTO videos(title, created_at, updated_at) VALUES($1, now(), now())
-    #   SQL
     #
     # @example With values helper
     #   articles = [{title: "First", created_at: Time.current}]
@@ -666,6 +809,107 @@ module AppQuery
       raise UnrenderedQueryError, "Query is ERB. Use #render before deleting."
     end
 
+    # Executes COPY TO STDOUT for efficient data export.
+    #
+    # PostgreSQL-only. Uses raw connection for streaming. Raises an error
+    # when used with SQLite or other non-PostgreSQL adapters.
+    #
+    # @param s [String, nil] optional SELECT to apply before extracting
+    # @param format [:csv, :text, :binary] output format (default: :csv)
+    # @param header [Boolean] include column headers (default: true, CSV only)
+    # @param delimiter [Symbol, nil] field delimiter - :tab, :comma, :pipe, :semicolon (default: format's default)
+    # @param dest [String, IO, nil] destination - file path, IO object, or nil to return string
+    # @param binds [Hash] bind parameters
+    # @return [String, Integer, nil] CSV string if dest: nil, bytes written if dest: path, nil if dest: IO
+    #
+    # @example Return as string
+    #   csv = AppQuery[:users].copy_to
+    #
+    # @example Write to file path
+    #   AppQuery[:users].copy_to(dest: "export.csv")
+    #
+    # @example Write to IO object
+    #   File.open("export.csv", "w") { |f| query.copy_to(dest: f) }
+    #
+    # @example Export in Rails controller
+    #   respond_to do |format|
+    #      format.html do
+    #        @invoices = query.entries
+    #
+    #        render :index
+    #      end
+    #
+    #      format.csv do
+    #        response.headers['Content-Type'] = 'text/csv'
+    #        response.headers['Content-Disposition'] = 'attachment; filename="invoices.csv"'
+    #
+    #        query.unpaginated.copy_to(dest: response.stream)
+    #      end
+    #    end
+    #
+    # @example Rails runner
+    #   bin/rails runner "puts Export::ProductsQuery.new.copy_to" > tmp/products.csv
+    #
+    # @raise [AppQuery::Error] if adapter is not PostgreSQL
+    def copy_to(s = nil, format: :csv, header: true, delimiter: nil, dest: nil, binds: {})
+      raw_conn = ActiveRecord::Base.connection.raw_connection
+      unless raw_conn.respond_to?(:copy_data)
+        raise Error, "copy_to requires PostgreSQL (current adapter does not support COPY)"
+      end
+
+      allowed_formats = %i[csv text binary]
+      unless allowed_formats.include?(format)
+        raise ArgumentError, "Invalid format: #{format.inspect}. Allowed: #{allowed_formats.join(", ")}"
+      end
+
+      delimiters = {tab: "\t", comma: ",", pipe: "|", semicolon: ";"}
+      if delimiter
+        if !delimiters.key?(delimiter)
+          raise ArgumentError, "Invalid delimiter: #{delimiter.inspect}. Allowed: #{delimiters.keys.join(", ")}"
+        elsif format == :binary
+          raise ArgumentError, "Delimiter not allowed for format :binary"
+        end
+      end
+
+      add_binds(**binds).with_select(s).render({}).then do |aq|
+        options = ["FORMAT #{format.to_s.upcase}"]
+        options << "HEADER" if header && format == :csv
+        options << "DELIMITER E'#{delimiters[delimiter]}'" if delimiter
+
+        inner_sql = ActiveRecord::Base.sanitize_sql_array([aq.to_s, aq.binds])
+        copy_sql = "COPY (#{inner_sql}) TO STDOUT WITH (#{options.join(", ")})"
+
+        case dest
+        when NilClass
+          output = +""
+          raw_conn.copy_data(copy_sql) do
+            while (row = raw_conn.get_copy_data)
+              output << row
+            end
+          end
+          # pg returns ASCII-8BIT, but CSV/text is UTF-8; binary stays as-is
+          (format == :binary) ? output : output.force_encoding(Encoding::UTF_8)
+        when String
+          bytes = 0
+          File.open(dest, "wb") do |f|
+            raw_conn.copy_data(copy_sql) do
+              while (row = raw_conn.get_copy_data)
+                bytes += f.write(row)
+              end
+            end
+          end
+          bytes
+        else
+          raw_conn.copy_data(copy_sql) do
+            while (row = raw_conn.get_copy_data)
+              dest.write(row)
+            end
+          end
+          nil
+        end
+      end
+    end
+
     # @!group Query Introspection
 
     # Returns the tokenized representation of the SQL.
@@ -690,8 +934,12 @@ module AppQuery
     # @example
     #   AppQuery("WITH a AS (SELECT 1), b AS (SELECT 2) SELECT * FROM a, b").cte_names
     #   # => ["a", "b"]
+    #
+    # @example Quoted identifiers are returned without quotes
+    #   AppQuery('WITH "special*name" AS (SELECT 1) SELECT * FROM "special*name"').cte_names
+    #   # => ["special*name"]
     def cte_names
-      tokens.filter { _1[:t] == "CTE_IDENTIFIER" }.map { _1[:v] }
+      tokens.filter { _1[:t] == "CTE_IDENTIFIER" }.map { _1[:v].delete_prefix('"').delete_suffix('"') }
     end
 
     # @!group Query Transformation
@@ -811,6 +1059,29 @@ module AppQuery
     end
 
     # @!group CTE Manipulation
+
+    # Returns a new query focused on the specified CTE.
+    #
+    # Wraps the query to select from the named CTE, allowing you to
+    # inspect or test individual CTEs in isolation.
+    #
+    # @param name [Symbol, String] the CTE name to select from
+    # @return [Q] a new query selecting from the CTE
+    # @raise [ArgumentError] if the CTE doesn't exist
+    #
+    # @example Focus on a specific CTE
+    #   query = AppQuery("WITH published AS (SELECT * FROM articles WHERE published) SELECT * FROM published")
+    #   query.cte(:published).entries
+    #
+    # @example Chain with other methods
+    #   ArticleQuery.new.cte(:active_articles).take(5)
+    def cte(name)
+      name = name.to_s
+      unless cte_names.include?(name)
+        raise ArgumentError, "Unknown CTE #{name.inspect}. Available: #{cte_names.inspect}"
+      end
+      with_select("SELECT * FROM #{quote_table(name)}")
+    end
 
     # Prepends a CTE to the beginning of the WITH clause.
     #
@@ -941,6 +1212,16 @@ module AppQuery
     def to_s
       @sql
     end
+
+    private
+
+    def quote_table(name)
+      AppQuery.quote_table(name)
+    end
+
+    def quote_column(name)
+      AppQuery.quote_column(name)
+    end
   end
 end
 
@@ -964,3 +1245,4 @@ rescue LoadError
 end
 
 require_relative "app_query/rspec" if Object.const_defined? :RSpec
+require_relative "app_query/railtie" if defined?(Rails::Railtie)

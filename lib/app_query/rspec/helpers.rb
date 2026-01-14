@@ -1,56 +1,121 @@
+# frozen_string_literal: true
+
 module AppQuery
   module RSpec
+    # RSpec helpers for testing query classes.
+    #
+    # @example Basic usage
+    #   RSpec.describe ProductsQuery, type: :query do
+    #     it "returns products" do
+    #       expect(described_query.entries).to be_present
+    #     end
+    #   end
+    #
+    # @example Testing a specific CTE
+    #   RSpec.describe ProductsQuery, type: :query do
+    #     describe "cte active_products" do
+    #       it "only contains active products" do
+    #         expect(described_query.entries).to all(include("active" => true))
+    #       end
+    #     end
+    #   end
+    #
+    # @example With required binds
+    #   RSpec.describe UsersQuery, type: :query, binds: {company_id: 1} do
+    #     it "returns users for company" do
+    #       expect(described_query.entries).to be_present
+    #     end
+    #   end
+    #
+    # @example With vars
+    #   RSpec.describe ProductsQuery, type: :query do
+    #     describe "as admin", vars: {admin: true} do
+    #       it "returns all products" do
+    #         expect(described_query.count).to eq(3)
+    #       end
+    #     end
+    #   end
+    #
+    # @example SQL logging for debugging
+    #   RSpec.describe ProductsQuery, type: :query do
+    #     describe "debugging", log: true do
+    #       it "logs SQL to stdout" do
+    #         # SQL queries will be printed to the console
+    #         described_query.entries
+    #       end
+    #     end
+    #   end
     module Helpers
-      def default_binds
-        self.class.default_binds
+      # Returns the query instance, optionally focused on a CTE.
+      #
+      # When inside a `describe "cte xxx"` block, returns a query
+      # that selects from that CTE instead of the full query.
+      #
+      # @param kwargs [Hash] arguments passed to {#build_query}
+      # @return [AppQuery::BaseQuery, AppQuery::Q] the query instance
+      #
+      # @example Override binds per-test
+      #   expect(described_query(user_id: 123).entries).to include(...)
+      def described_query(**kwargs)
+        query = build_query(**kwargs)
+        cte_name ? query.query.cte(cte_name) : query
       end
 
-      def default_vars
-        self.class.default_vars
+      # Builds the query instance. Override this to customize instantiation.
+      #
+      # @param kwargs [Hash] merged with {#query_binds} and {#query_vars}
+      # @return [AppQuery::BaseQuery] the query instance
+      #
+      # @example Custom build method
+      #   def build_query(**kwargs)
+      #     described_class.build(**query_binds.merge(query_vars).merge(kwargs))
+      #   end
+      def build_query(**kwargs)
+        described_class.new(**query_binds.merge(query_vars).merge(kwargs))
       end
 
-      def expand_select(s)
-        s.gsub(":cte", cte_name)
+      # Returns binds from RSpec metadata.
+      #
+      # @return [Hash] the binds hash
+      def query_binds
+        metadata_value(:binds) || {}
       end
 
-      def select_all(select: nil, binds: default_binds, **kws)
-        @query_result = described_query(select:).select_all(binds:, **kws)
+      # Returns vars from RSpec metadata.
+      #
+      # @return [Hash] the vars hash
+      def query_vars
+        metadata_value(:vars) || {}
       end
 
-      def select_one(select: nil, binds: default_binds, **kws)
-        @query_result = described_query(select:).select_one(binds:, **kws)
-      end
-
-      def select_value(select: nil, binds: default_binds, **kws)
-        @query_result = described_query(select:).select_value(binds:, **kws)
-      end
-
-      def described_query(select: nil)
-        select ||= "SELECT * FROM :cte" if cte_name
-        select &&= expand_select(select) if cte_name
-        self.class.described_query.render(default_vars).with_select(select)
-      end
-
+      # Returns the CTE name if inside a "cte xxx" describe block.
+      #
+      # @return [String, nil] the CTE name
       def cte_name
         self.class.cte_name
       end
 
-      def query_name
-        self.class.query_name
+      def self.included(klass)
+        klass.extend(ClassMethods)
       end
 
-      def query_result
-        @query_result
+      private
+
+      def metadata_value(key)
+        self.class.metadata_value(key)
       end
 
       module ClassMethods
-        def described_query
-          AppQuery[query_name]
+        def cte_name
+          descriptions.find { _1[/\Acte\s/i] }&.split&.last
+        end
+
+        def metadata_value(key)
+          metadatas.find { _1[key] }&.[](key)
         end
 
         def metadatas
-          scope = is_a?(Class) ? self : self.class
-          metahash = scope.metadata
+          metahash = metadata
           result = []
           loop do
             result << metahash
@@ -63,36 +128,7 @@ module AppQuery
         def descriptions
           metadatas.map { _1[:description] }
         end
-
-        def query_name
-          descriptions.find { _1[/(app)?query\s/i] }&.then { _1.split.last }
-        end
-
-        def cte_name
-          descriptions.find { _1[/cte\s/i] }&.then { _1.split.last }
-        end
-
-        def default_binds
-          metadatas.find { _1[:default_binds] }&.[](:default_binds) || []
-        end
-
-        def default_vars
-          metadatas.find { _1[:default_vars] }&.[](:default_vars) || {}
-        end
-
-        def included(klass)
-          super
-          # Inject classmethods into the group.
-          klass.extend(ClassMethods)
-          # If the describe block is aimed at string or resource/provider class
-          # then set the default subject to be the Chef run.
-          # if klass.described_class.nil? || klass.described_class.is_a?(Class) && (klass.described_class < Chef::Resource || klass.described_class < Chef::Provider)
-          #  klass.subject { chef_run }
-          # end
-        end
       end
-
-      extend ClassMethods
     end
   end
 end

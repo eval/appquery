@@ -1,0 +1,9 @@
+# frozen_string_literal: true
+
+require "rails_helper"
+
+RSpec.describe <%= class_name %>Query, type: :query do
+  it "returns results" do
+    expect(described_query.entries).to be_an(Array)
+  end
+end

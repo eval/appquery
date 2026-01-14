@@ -5,7 +5,7 @@
 --no-private
 --output-dir doc
 --exclude tmp/
---exclude spec/
+--exclude ^spec/
 --exclude examples/
 --exclude gemfiles/
 lib/**/*.rb

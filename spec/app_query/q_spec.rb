@@ -29,6 +29,59 @@ RSpec.describe AppQuery::Q do
     end
   end
 
+  describe "#take", :db do
+    specify "returns first n rows" do
+      expect(articles_query.take(2).size).to eq(2)
+      expect(articles_query.take(2).first).to include("title" => "First")
+    end
+
+    specify "with select and binds" do
+      result = articles_query.take(1, <<~SQL, binds: {published: true})
+        SELECT * FROM :_ WHERE published = :published
+      SQL
+      expect(result.size).to eq(1)
+      expect(result.first).to include("title" => "First", "published" => true)
+    end
+
+    specify "limit is an alias" do
+      expect(articles_query.limit(2)).to eq(articles_query.take(2))
+    end
+  end
+
+  describe "#last", :db do
+    specify "returns the last row" do
+      expect(articles_query.last).to include("title" => "Third")
+    end
+
+    specify "returns nil for empty result" do
+      result = articles_query.last("SELECT * FROM :_ WHERE false")
+      expect(result).to be_nil
+    end
+
+    specify "with select" do
+      result = articles_query.last("SELECT * FROM :_ WHERE published = true")
+      expect(result).to include("title" => "Third")
+    end
+  end
+
+  describe "#take_last", :db do
+    specify "returns last n rows" do
+      result = articles_query.take_last(2)
+      expect(result.size).to eq(2)
+      expect(result.map { _1["title"] }).to eq(%w[Second Third])
+    end
+
+    specify "returns empty array for empty result" do
+      result = articles_query.take_last(2, "SELECT * FROM :_ WHERE false")
+      expect(result).to eq([])
+    end
+
+    specify "handles n larger than result size" do
+      result = articles_query.take_last(10)
+      expect(result.size).to eq(3)
+    end
+  end
+
   describe "#column", :db do
     specify "quotes the column name" do
       expect(ActiveRecord::Base.connection).to receive(:quote_column_name).with("title").and_call_original
@@ -45,6 +98,38 @@ RSpec.describe AppQuery::Q do
         FROM :_
         WHERE published = :published
       SQL
+    end
+
+    specify "with unique: true" do
+      expect(articles_query.column(:published, unique: true)).to contain_exactly(true, false)
+    end
+  end
+
+  describe "#column_names", :db do
+    specify "returns column names" do
+      expect(articles_query.column_names).to eq(%w[id title published])
+    end
+
+    specify "works on empty results" do
+      expect(app_query("SELECT 1 AS a, 2 AS b WHERE false").column_names).to eq(%w[a b])
+    end
+  end
+
+  describe "#cte", :db do
+    specify "focuses on the named CTE" do
+      expect(articles_query.cte(:articles).count).to eq(3)
+    end
+
+    specify "raises for unknown CTE" do
+      expect { articles_query.cte(:unknown) }.to raise_error(ArgumentError, /Unknown CTE/)
+    end
+
+    specify "handles quoted CTE names" do
+      q = app_query(<<~SQL)
+        WITH "special*name" AS (SELECT 1 AS n)
+        SELECT * FROM "special*name"
+      SQL
+      expect(q.cte("special*name").count).to eq(1)
     end
   end
 
@@ -357,7 +442,11 @@ RSpec.describe AppQuery::Q do
     it "shows the correct names in the original order" do
       expect(app_query("")).to have_attributes(cte_names: match([]))
       expect(app_query("with foo as(select 1), bar as(select 2)")).to have_attributes(cte_names: match(%w[foo bar]))
-      expect(app_query(%[with "foo" as(select 1), bar as(select 2)])).to have_attributes(cte_names: match(%w["foo" bar]))
+    end
+
+    it "strips quotes from quoted identifiers" do
+      expect(app_query(%[with "foo" as(select 1), bar as(select 2)])).to have_attributes(cte_names: match(%w[foo bar]))
+      expect(app_query(%[with "special*name" as(select 1)])).to have_attributes(cte_names: ["special*name"])
     end
   end
 
@@ -681,6 +770,94 @@ RSpec.describe AppQuery::Q do
             include(a_hash_including("published_on" => "2024-3-31".to_date))
         end
       end
+    end
+  end
+
+  describe "#copy_to", :db do
+    before do
+      ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS export_test")
+      ActiveRecord::Base.connection.execute(<<~SQL)
+        CREATE TABLE export_test (id int, name text)
+      SQL
+      ActiveRecord::Base.connection.execute("INSERT INTO export_test VALUES (1, 'Alice'), (2, 'Bob')")
+    end
+
+    after do
+      ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS export_test")
+    end
+
+    it "returns CSV string when to: is nil" do
+      result = app_query("SELECT * FROM export_test ORDER BY id").copy_to(header: true)
+      expect(result).to include("id,name")
+      expect(result).to include("1,Alice")
+      expect(result).to include("2,Bob")
+    end
+
+    it "writes to file path" do
+      path = "tmp/export_test.csv"
+      bytes = app_query("SELECT * FROM export_test ORDER BY id").copy_to(dest: path)
+      expect(bytes).to be > 0
+      expect(File.read(path)).to include("1,Alice")
+    ensure
+      File.delete(path) if File.exist?(path)
+    end
+
+    it "writes to IO object and returns nil" do
+      io = StringIO.new
+      result = app_query("SELECT * FROM export_test ORDER BY id").copy_to(dest: io)
+      expect(result).to be_nil
+      expect(io.string).to include("1,Alice")
+    end
+
+    it "supports binds" do
+      result = app_query("SELECT * FROM export_test WHERE id = :id").copy_to(binds: {id: 1})
+      expect(result).to include("Alice")
+      expect(result).not_to include("Bob")
+    end
+
+    it "supports custom delimiter" do
+      result = app_query("SELECT * FROM export_test ORDER BY id").copy_to(delimiter: :tab, header: false)
+      expect(result).to include("1\tAlice")
+    end
+
+    it "supports format: :text" do
+      result = app_query("SELECT * FROM export_test ORDER BY id").copy_to(format: :text)
+      expect(result).to include("1\tAlice")
+    end
+
+    it "supports format: :binary" do
+      result = app_query("SELECT * FROM export_test ORDER BY id").copy_to(format: :binary)
+      # PostgreSQL binary format starts with "PGCOPY\n\xff\r\n\0"
+      expect(result).to start_with("PGCOPY\n")
+    end
+
+    it "supports select override parameter" do
+      result = app_query("SELECT * FROM export_test").copy_to("SELECT * FROM :_ WHERE id = 1", header: false)
+      expect(result.strip).to eq("1,Alice")
+    end
+
+    it "raises error for invalid format" do
+      expect { app_query("SELECT 1").copy_to(format: :json) }.to raise_error(
+        ArgumentError, /Invalid format: :json/
+      )
+    end
+
+    it "raises error for invalid delimiter" do
+      expect { app_query("SELECT 1").copy_to(delimiter: :colon) }.to raise_error(
+        ArgumentError, /Invalid delimiter: :colon/
+      )
+    end
+  end
+
+  describe "#copy_to with non-PostgreSQL adapter" do
+    it "raises error when adapter doesn't support COPY" do
+      raw_conn = double("raw_connection")
+      allow(raw_conn).to receive(:respond_to?).with(:copy_data).and_return(false)
+      allow(ActiveRecord::Base.connection).to receive(:raw_connection).and_return(raw_conn)
+
+      expect { app_query("SELECT 1").copy_to }.to raise_error(
+        AppQuery::Error, /copy_to requires PostgreSQL/
+      )
     end
   end
 end

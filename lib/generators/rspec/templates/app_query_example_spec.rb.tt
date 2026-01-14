@@ -1,0 +1,140 @@
+# frozen_string_literal: true
+
+require "rails_helper"
+
+# ExampleQuery Spec
+#
+# This demonstrates all AppQuery RSpec helpers. Delete once familiar.
+#
+# Setup: Add to spec/rails_helper.rb:
+#   require "app_query/rspec"
+#
+RSpec.describe ExampleQuery, type: :query do
+  # ============================================================================
+  # Basic Usage
+  # ============================================================================
+  #
+  # `described_query` instantiates the query class and returns results.
+  # It automatically uses binds/vars from metadata.
+
+  describe "basic query" do
+    it "returns an array of hashes" do
+      expect(described_query(admin: true).entries).to be_an(Array)
+      expect(described_query(admin: true).first).to be_a(Hash)
+    end
+  end
+
+  # ============================================================================
+  # Testing CTEs
+  # ============================================================================
+  #
+  # Use `describe "cte <name>"` to test a specific CTE in isolation.
+  # `described_query` will SELECT from that CTE instead of the full query.
+
+  describe "cte products" do
+    it "contains all products (including inactive)" do
+      expect(described_query.count).to eq(3)
+    end
+
+    it "has the expected columns" do
+      expect(described_query.columns).to contain_exactly(
+        "id", "name", "supplier_id", "active"
+      )
+    end
+  end
+
+  describe "cte active_products" do
+    it "only contains active products" do
+      expect(described_query.entries).to all(include("active" => true))
+    end
+
+    it "excludes inactive products" do
+      expect(described_query.entries.size).to eq(2)
+    end
+  end
+
+  # ============================================================================
+  # Passing Binds via Metadata
+  # ============================================================================
+  #
+  # Use `binds: {key: value}` in describe/context metadata.
+  # These are passed to the query class constructor.
+
+  describe "filtered by supplier", binds: {supplier_id: 100} do
+    it "returns only products for that supplier" do
+      expect(described_query.entries).to all(include("supplier_id" => 100))
+    end
+  end
+
+  # ============================================================================
+  # Passing Vars via Metadata
+  # ============================================================================
+  #
+  # Use `vars: {key: value}` for template variables.
+  # These control conditional SQL generation.
+
+  describe "as admin", vars: {admin: true} do
+    it "returns all active products regardless of supplier" do
+      expect(described_query.entries.size).to eq(2)
+    end
+
+    it "includes products from multiple suppliers" do
+      expect(described_query.column(:supplier_id, unique: true).count).to be > 1
+    end
+  end
+
+  # ============================================================================
+  # Combining Binds and Vars
+  # ============================================================================
+
+  describe "non-admin with supplier", binds: {supplier_id: 100}, vars: {admin: false} do
+    it "filters by supplier" do
+      expect(described_query.entries).to all(include("supplier_id" => 100))
+    end
+  end
+
+  # ============================================================================
+  # Per-Test Overrides
+  # ============================================================================
+  #
+  # Pass arguments to `described_query()` to override for a single test.
+
+  describe "per-test customization" do
+    it "can override binds inline" do
+      result = described_query(supplier_id: 200, admin: false)
+      expect(result.entries).to all(include("supplier_id" => 200))
+    end
+  end
+
+  # ============================================================================
+  # Custom Query Building
+  # ============================================================================
+  #
+  # Override `build_query` for custom instantiation patterns.
+
+  describe "custom build" do
+    def build_query(**kwargs)
+      # Example: always set admin to true in this context
+      described_class.new(admin: true, **kwargs)
+    end
+
+    it "uses the custom build method" do
+      # This will use admin: true from build_query
+      expect(described_query.entries.size).to eq(2)
+    end
+  end
+
+  # ============================================================================
+  # SQL Logging
+  # ============================================================================
+  #
+  # Add `log: true` to see the actual SQL being executed.
+  # Useful for debugging.
+
+  describe "with logging", log: true do
+    it "logs SQL to stdout" do
+      # Check your terminal - you'll see the SQL query
+      described_query.entries
+    end
+  end
+end
