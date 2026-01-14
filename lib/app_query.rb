@@ -73,6 +73,26 @@ module AppQuery
   end
   reset_configuration!
 
+  # @!group Quoting Helpers
+
+  # Quotes a table name for safe use in SQL.
+  #
+  # @param name [String, Symbol] the table name
+  # @return [String] the quoted table name
+  def self.quote_table(name)
+    ActiveRecord::Base.connection.quote_table_name(name)
+  end
+
+  # Quotes a column name for safe use in SQL.
+  #
+  # @param name [String, Symbol] the column name
+  # @return [String] the quoted column name
+  def self.quote_column(name)
+    ActiveRecord::Base.connection.quote_column_name(name)
+  end
+
+  # @!endgroup
+
   # Loads a query from a file in the configured query path.
   #
   # When no extension is provided, tries `.sql` first, then `.sql.erb`.
@@ -132,8 +152,7 @@ module AppQuery
   #   AppQuery.table(:users, binds: {active: true})
   #     .select_all("SELECT * FROM :_ WHERE active = :active")
   def self.table(name, **opts)
-    quoted = ActiveRecord::Base.connection.quote_table_name(name)
-    Q.new("SELECT * FROM #{quoted}", name: "AppQuery.table(#{name})", **opts)
+    Q.new("SELECT * FROM #{quote_table(name)}", name: "AppQuery.table(#{name})", **opts)
   end
 
   class Result < ActiveRecord::Result
@@ -568,8 +587,8 @@ module AppQuery
     #   AppQuery("SELECT * FROM products").column(:category, unique: true)
     #   # => ["Electronics", "Clothing", "Home"]
     def column(c, s = nil, binds: {}, unique: false)
-      quoted_column = ActiveRecord::Base.connection.quote_column_name(c)
-      select_expr = unique ? "DISTINCT #{quoted_column}" : quoted_column
+      quoted = quote_column(c)
+      select_expr = unique ? "DISTINCT #{quoted}" : quoted
       with_select(s).select_all("SELECT #{select_expr} AS column FROM :_", binds:).column("column")
     end
 
@@ -995,8 +1014,7 @@ module AppQuery
       unless cte_names.include?(name)
         raise ArgumentError, "Unknown CTE #{name.inspect}. Available: #{cte_names.inspect}"
       end
-      quoted = ActiveRecord::Base.connection.quote_table_name(name)
-      with_select("SELECT * FROM #{quoted}")
+      with_select("SELECT * FROM #{quote_table(name)}")
     end
 
     # Prepends a CTE to the beginning of the WITH clause.
@@ -1127,6 +1145,16 @@ module AppQuery
     # @return [String] the SQL query string
     def to_s
       @sql
+    end
+
+    private
+
+    def quote_table(name)
+      AppQuery.quote_table(name)
+    end
+
+    def quote_column(name)
+      AppQuery.quote_column(name)
     end
   end
 end
