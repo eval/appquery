@@ -29,6 +29,25 @@ RSpec.describe AppQuery::Q do
     end
   end
 
+  describe "#take", :db do
+    specify "returns first n rows" do
+      expect(articles_query.take(2).size).to eq(2)
+      expect(articles_query.take(2).first).to include("title" => "First")
+    end
+
+    specify "with select and binds" do
+      result = articles_query.take(1, <<~SQL, binds: {published: true})
+        SELECT * FROM :_ WHERE published = :published
+      SQL
+      expect(result.size).to eq(1)
+      expect(result.first).to include("title" => "First", "published" => true)
+    end
+
+    specify "limit is an alias" do
+      expect(articles_query.limit(2)).to eq(articles_query.take(2))
+    end
+  end
+
   describe "#column", :db do
     specify "quotes the column name" do
       expect(ActiveRecord::Base.connection).to receive(:quote_column_name).with("title").and_call_original

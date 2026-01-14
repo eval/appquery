@@ -433,6 +433,24 @@ module AppQuery
     end
     alias_method :first, :select_one
 
+    # Executes the query and returns the first n rows.
+    #
+    # @param n [Integer] the number of rows to return
+    # @param s [String, nil] optional SELECT to apply before taking
+    # @param binds [Hash, nil] bind parameters to add
+    # @param cast [Boolean, Hash, Array] type casting configuration
+    # @return [Array<Hash>] the first n rows as an array of hashes
+    #
+    # @example
+    #   AppQuery("SELECT * FROM users ORDER BY created_at").take(5)
+    #   # => [{"id" => 1, ...}, {"id" => 2, ...}, ...]
+    #
+    # @see #first
+    def take(n, s = nil, binds: {}, cast: self.cast)
+      with_select(s).select_all("SELECT * FROM :_ LIMIT #{n.to_i}", binds:, cast:).entries
+    end
+    alias_method :limit, :take
+
     # Executes the query and returns the first value of the first row.
     #
     # @param binds [Hash, nil] named bind parameters
