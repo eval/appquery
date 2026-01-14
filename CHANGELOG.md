@@ -1,5 +1,71 @@
 ## [Unreleased]
 
+### 💥 Breaking Changes
+
+- ⚠️ **RSpec helpers refactored**  
+  Query under test is expected to be a class, `select_*` are no longer separate helpers:
+  ```ruby
+    expect(described_query.first).to \
+      include("id" => be_a(Integer), ...)
+    expect(described_query.entries).to include(a_hash_including("item_code" => "123456"))
+  ```
+
+### ✨ Features
+
+- 📤 **`copy_to`** — efficient PostgreSQL COPY export to CSV/text/binary
+  ```ruby
+  # Return as string
+  csv = AppQuery[:users].copy_to
+
+  # Write to file
+  AppQuery[:users].copy_to(dest: "export.csv")
+
+  # Stream to IO (e.g., Rails response)
+  query.copy_to(dest: response.stream)
+  ```
+
+- 🎯 **`cte(:name)`** — focus a query on a specific CTE for testing or inspection
+  ```ruby
+  query = AppQuery("WITH active AS (...), admins AS (...) SELECT ...")
+  query.cte(:active).entries   # select from the active CTE
+  query.cte(:admins).count     # count rows in admins CTE
+  ```
+
+- 🗃️ **`AppQuery.table(:name)`** — quick query from a table
+  ```ruby
+  AppQuery.table(:products).count
+  AppQuery.table(:users).take(5)
+  ```
+
+- 🔢 **`take(n)` / `take_last(n)`** — fetch first or last n rows
+  ```ruby
+  query.take(5)       # first 5 rows
+  query.take_last(5)  # last 5 rows
+  ```
+
+- ⏮️ **`last`** — fetch the last row (counterpart to `first`)
+  ```ruby
+  query.last  # => {"id" => 42, "name" => "Zoe"}
+  ```
+
+- 📋 **`column_names`** — get column names without fetching rows
+  ```ruby
+  query.column_names  # => ["id", "name", "email"]
+  ```
+
+- 🦄 **`unique:` keyword for `Q#column`** — return distinct values
+  ```ruby
+  query.column(:status, unique: true)  # => ["active", "pending"]
+  ```
+
+- 🏗️ **Overhauled generators** — moved to `AppQuery::` namespace
+  ```bash
+  rails g app_query:example # annotated example query
+  rails g app_query:query Products
+  rails g query Products  # hidden alias
+  rails g query --help    # details
+  ```
+
 ## 0.7.0
 
 **Releasedate**: 8-1-2026  
