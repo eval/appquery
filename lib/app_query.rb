@@ -762,6 +762,9 @@ module AppQuery
     #      end
     #    end
     #
+    # @example Rails runner
+    #   bin/rails runner "puts Export::ProductsQuery.new.copy_to" > tmp/products.csv
+    #
     # @raise [AppQuery::Error] if adapter is not PostgreSQL
     def copy_to(s = nil, format: :csv, header: true, delimiter: nil, dest: nil, binds: {})
       raw_conn = ActiveRecord::Base.connection.raw_connection

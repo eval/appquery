@@ -31,7 +31,17 @@ module AppQuery
     #   RSpec.describe ProductsQuery, type: :query do
     #     describe "as admin", vars: {admin: true} do
     #       it "returns all products" do
-    #         expect(described_query.entries.size).to eq(3)
+    #         expect(described_query.count).to eq(3)
+    #       end
+    #     end
+    #   end
+    #
+    # @example SQL logging for debugging
+    #   RSpec.describe ProductsQuery, type: :query do
+    #     describe "debugging", log: true do
+    #       it "logs SQL to stdout" do
+    #         # SQL queries will be printed to the console
+    #         described_query.entries
     #       end
     #     end
     #   end
