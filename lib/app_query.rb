@@ -184,7 +184,7 @@ module AppQuery
 
     def self.from_ar_result(r, cast = nil)
       if r.empty?
-        EMPTY
+        r.columns.empty? ? EMPTY : new(r.columns, [], r.column_types)
       else
         cast &&= case cast
         when Array
@@ -534,6 +534,25 @@ module AppQuery
       with_select(s).select_all("SELECT #{unique ? "DISTINCT" : ""} #{quoted_column} AS column FROM :_", binds:).column("column")
     end
 
+    # Returns the column names from the query without fetching any rows.
+    #
+    # Uses `LIMIT 0` to get column metadata efficiently.
+    #
+    # @param s [String, nil] optional SELECT to apply before extracting
+    # @param binds [Hash, nil] bind parameters to add
+    # @return [Array<String>] the column names
+    #
+    # @example Get column names
+    #   AppQuery("SELECT id, name, email FROM users").columns
+    #   # => ["id", "name", "email"]
+    #
+    # @example From a CTE
+    #   AppQuery("WITH t(a, b) AS (VALUES (1, 2)) SELECT * FROM t").columns
+    #   # => ["a", "b"]
+    def columns(s = nil, binds: {})
+      with_select(s).select_all("SELECT * FROM :_ LIMIT 0", binds:).columns
+    end
+
     # Returns an array of id values from the query.
     #
     # Convenience method equivalent to `column(:id)`. More efficient than
@@ -575,11 +594,6 @@ module AppQuery
     # @param binds [Hash, nil] bind parameters for the query
     # @param returning [String, nil] columns to return (Rails 7.1+ only)
     # @return [Integer, Object] the inserted ID or returning value
-    #
-    # @example With positional binds
-    #   AppQuery(<<~SQL).insert(binds: ["Let's learn SQL!"])
-    #     INSERT INTO videos(title, created_at, updated_at) VALUES($1, now(), now())
-    #   SQL
     #
     # @example With values helper
     #   articles = [{title: "First", created_at: Time.current}]

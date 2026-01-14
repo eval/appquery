@@ -52,6 +52,16 @@ RSpec.describe AppQuery::Q do
     end
   end
 
+  describe "#columns", :db do
+    specify "returns column names" do
+      expect(articles_query.columns).to eq(%w[id title published])
+    end
+
+    specify "works on empty results" do
+      expect(app_query("SELECT 1 AS a, 2 AS b WHERE false").columns).to eq(%w[a b])
+    end
+  end
+
   describe "#any?", :db do
     specify "without select" do
       expect(articles_query.any?).to be
