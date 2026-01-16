@@ -569,8 +569,9 @@ module AppQuery
     #
     # @see #last
     def take_last(n, s = nil, binds: {}, cast: self.cast)
+      offset_expr = greatest("(SELECT COUNT(*) FROM :_) - #{n.to_i}", "0")
       with_select(s).select_all(
-        "SELECT * FROM :_ LIMIT #{n.to_i} OFFSET GREATEST((SELECT COUNT(*) FROM :_) - #{n.to_i}, 0)",
+        "SELECT * FROM :_ LIMIT #{n.to_i} OFFSET #{offset_expr}",
         binds:, cast:
       ).entries
     end
@@ -1240,6 +1241,16 @@ module AppQuery
 
     def quote_column(name)
       AppQuery.quote_column(name)
+    end
+
+    # Returns SQL for max(a, b) that works across adapters.
+    # PostgreSQL uses GREATEST, SQLite uses MAX for scalar comparison.
+    def greatest(a, b)
+      if ActiveRecord::Base.connection.adapter_name =~ /sqlite/i
+        "MAX(#{a}, #{b})"
+      else
+        "GREATEST(#{a}, #{b})"
+      end
     end
   end
 end
