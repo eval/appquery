@@ -6,5 +6,5 @@ set -vx
 bundle install
 
 [ ! -e mise.local.toml ] && cp mise.local.toml.example mise.local.toml
-printenv PG_DATABASE_URL || (echo -e "\e[31mSet ENV['PG_DATABASE_URL'] in order to run tests\e[0m" && exit 1)
-printenv DATABASE_URL || (echo -e "\e[31mSet ENV['DATABASE_URL'] in order to connect via console\e[0m" && exit 1)
+printenv SPEC_DATABASE_URL || (echo -e "\e[31mSet ENV['SPEC_DATABASE_URL'] in order to run tests\e[0m" && exit 1)
+printenv CONSOLE_DATABASE_URL || (echo -e "\e[31mSet ENV['CONSOLE_DATABASE_URL'] in order to connect via console\e[0m" && exit 1)
