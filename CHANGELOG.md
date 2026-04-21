@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### ✨ Features
+
+- Publishing gem requires MFA
+
 ## 0.8.0
 
 **Releasedate**: 14-1-2026  
