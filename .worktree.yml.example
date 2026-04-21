@@ -1,0 +1,40 @@
+# Worktree configuration for bonchi.
+# See https://github.com/eval/bonchi
+
+# Minimum bonchi version required.
+# min_version: 0.6.0
+
+# Files to copy from the main worktree before setup.
+copy:
+  - mise.toml
+  - mise.local.toml
+  - _irbrc
+  - bin/worktree-dev
+
+# Files to symlink from the main worktree (useful for large directories).
+# link:
+#   - node_modules
+
+# Env var names to allocate unique ports for (from global pool).
+# ports:
+#   - PORT
+
+# Regex replacements in copied files. Env vars ($VAR) are expanded.
+# Short form:
+# replace:
+#   .env.local:
+#     - "^PORT=.*": "PORT=$PORT"
+# Full form (with optional missing: warn, default: halt):
+# replace:
+#   .env.local:
+#     - match: "^PORT=.*"
+#       with: "PORT=$PORT"
+#       missing: warn
+
+# Commands to run before the setup command (port env vars are available).
+pre_setup:
+  - mise trust
+  - bin/setup
+
+# The setup command to run (default: bin/setup).
+setup: bin/worktree-dev

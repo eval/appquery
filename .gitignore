@@ -16,3 +16,7 @@
 Gemfile.lock
 /mise.local.toml
 /gemfiles/*.gemfile.lock
+
+/.worktree.yml
+/.claude
+/bin/worktree-dev

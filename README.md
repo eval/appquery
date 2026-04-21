@@ -322,7 +322,8 @@ rake spec
 bin/yard-dev
 ```
 
-Using [mise](https://mise.jdx.dev/) for env-vars is recommended.
+Using [mise](https://mise.jdx.dev/) for env-vars is recommended.  
+Using [bonchi](https://rubygems.org/gems/bonchi) allows for agentic working via git worktrees. See `.worktree.yml.example` for a config.
 
 ### Releasing
 
