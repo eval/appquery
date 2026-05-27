@@ -257,9 +257,15 @@ module AppQuery
 
       level = 1
       loop do
-        read_until(/\)|\(|'/)
+        read_until(%r{\)|\(|'|--|/\*})
         if eos?
           err "CTE select ended prematurely"
+        elsif match?("--")
+          read_until(/\n/)
+        elsif match?(%r{/\*})
+          read_until(%r{\*/})
+          err "CTE select ended prematurely" if eos?
+          read_char 2
         elsif match?(/'/)
           # Skip string literal (handle escaped quotes '')
           read_char
