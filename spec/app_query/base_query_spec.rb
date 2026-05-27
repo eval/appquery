@@ -145,12 +145,14 @@ RSpec.describe AppQuery::BaseQuery, :db do
     it "two row-level middlewares chain in include order" do
       stamp_first = Module.new do
         extend ActiveSupport::Concern
+
         define_method(:query) do
           @query ||= super().tap { |q| q.row_builder << ->(row) { row.merge("a" => 1) } }
         end
       end
       stamp_second = Module.new do
         extend ActiveSupport::Concern
+
         define_method(:query) do
           @query ||= super().tap { |q| q.row_builder << ->(row) { row.merge("b" => row["a"].to_i + 1) } }
         end
