@@ -120,6 +120,36 @@ RSpec.describe AppQuery::Tokenizer do
       expect(emitted_token("( select 1) ", state: :lex_cte_select, steps: 2)).to \
         include(t: "WHITESPACE")
     end
+
+    it "swallows line comments inside the select" do
+      sql = "(select 1 -- comment\n)"
+      expect(emitted_token(sql, state: :lex_cte_select)).to \
+        include(t: "CTE_SELECT", v: sql)
+    end
+
+    it "swallows block comments inside the select" do
+      sql = "(select 1 /* multi\nline */ from t)"
+      expect(emitted_token(sql, state: :lex_cte_select)).to \
+        include(t: "CTE_SELECT", v: sql)
+    end
+
+    it "doesn't treat ')' inside a line comment as the end of the select" do
+      sql = "(select 1 -- )\n  from t)"
+      expect(emitted_token(sql, state: :lex_cte_select)).to \
+        include(t: "CTE_SELECT", v: sql)
+    end
+
+    it "doesn't treat ')' inside a block comment as the end of the select" do
+      sql = "(select 1 /* ) */ from t)"
+      expect(emitted_token(sql, state: :lex_cte_select)).to \
+        include(t: "CTE_SELECT", v: sql)
+    end
+
+    it "raises when a block comment is unterminated" do
+      expect {
+        emitted_tokens("(select 1 /* nope", state: :lex_cte_select)
+      }.to raise_error described_class::LexError, /ended prematurely/i
+    end
   end
 
   describe "#lex_cte_identifier" do

@@ -66,31 +66,20 @@ module AppQuery
       self
     end
 
-    def select_all
-      map_result(super)
-    end
-
-    def select_one
-      map_one(super)
+    # Append our transform to the underlying Q's RowBuilder pipeline so every
+    # row-returning path (entries, first, last, take, with_select(...).first,
+    # …) sees mapped rows. Stacks with other row-level middlewares in
+    # include-order — earlier `include`s run first.
+    def query
+      @query ||= super.tap { |q| q.row_builder << method(:build_row) }
     end
 
     private
 
-    def map_result(result)
-      return result if @raw
-      return result unless (klass = resolve_map_klass)
-
-      attrs = klass.members
-      result.transform! { |row| klass.new(**row.symbolize_keys.slice(*attrs)) }
-    end
-
-    def map_one(result)
-      return result if @raw
-      return result unless (klass = resolve_map_klass)
-      return result unless result
-
-      attrs = klass.members
-      klass.new(**result.symbolize_keys.slice(*attrs))
+    def build_row(row)
+      return row if @raw
+      return row unless (klass = resolve_map_klass)
+      klass.new(**row.symbolize_keys.slice(*klass.members))
     end
 
     def resolve_map_klass

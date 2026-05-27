@@ -290,6 +290,115 @@ end
 
 See [the API docs](https://eval.github.io/appquery/AppQuery/RSpec/Helpers.html) for more RSpec examples.
 
+### Writing a Middleware
+
+A `BaseQuery` middleware is a `Module` you `include` into a query class. There are three layers to extend at, depending on *where* you want to act. The three compose cleanly on the same query class.
+
+| You want to… | Layer | How |
+|---|---|---|
+| change/decorate each row | **row-level** | append to `q.row_builder` |
+| filter, wrap, cap, paginate, cache the collection | **result-level** | override `#entries` (or `#first`, `#last`, …) |
+| change the SQL/binds before it runs | **query-level** | override `#query`, return a different `Q` |
+
+#### Row-level (the `row_builder` pipeline)
+
+`Q#row_builder` is a composable pipeline of callables that each receive a row Hash and return whatever should replace it — a Hash, a `Data`, a Struct, your own model.
+
+```ruby
+module Stamping
+  extend ActiveSupport::Concern
+
+  def query
+    @query ||= super.tap { |q| q.row_builder << ->(row) { row.merge("stamped_at" => Time.now) } }
+  end
+end
+
+class ArticlesQuery < ApplicationQuery
+  include Stamping
+end
+
+ArticlesQuery.new.first         # => {"id" => 1, ..., "stamped_at" => 2026-...}
+ArticlesQuery.new.entries.first # same — every row-returning path flows through row_builder
+```
+
+The pipeline propagates through `with_select(non_nil)`, `add_binds`, `with_binds`, `with_cast`, `with_sql`, and CTE focusing (`#cte`), so chained calls keep the same mapping. Each child gets an independent copy — mutating it doesn't affect the parent.
+
+**Stacking row-level middlewares.** Transformers run in **`include` order** — earliest `include` first, latest `include` last. With
+
+```ruby
+class MyQuery < ApplicationQuery
+  include Stamping            # runs first — its row goes into…
+  include AppQuery::Mappable  # …which sees the stamped hash and builds an Item
+end
+```
+
+`Stamping`'s lambda runs first, then `Mappable.build_row` consumes the already-stamped hash. ⚠️ Once a transformer returns a non-Hash (e.g. a `Data`), downstream transformers see that object — so a hash-merging transformer placed *after* `Mappable` would fail. Order the chain accordingly.
+
+**Doesn't fit row_builder:** filtering ("drop rows the viewer can't see") and collapsing rows. Both act on the collection, not a single row — use the result-level layer instead.
+
+#### Result-level (wrap a row-returning method)
+
+When you want to act on the whole collection — wrap, cap, cache, filter, paginate — override the row-returning method and call `super`. `super` returns rows that have *already* been through `row_builder`, so this composes with row-level middleware without thinking.
+
+`Paginatable` is the canonical example (wraps `#entries` in a `PaginatedResult`). Some others:
+
+```ruby
+module Caching
+  # memoise the whole result on the instance
+  def entries = @_entries ||= super
+  def first   = @_first   ||= super
+end
+
+module ScopedToTenant
+  def entries = super.select { |r| r["tenant_id"] == Current.tenant.id }
+end
+
+module Capped
+  CapResult = Data.define(:records, :hit_cap?) do
+    include Enumerable
+    def each(&b) = records.each(&b)
+  end
+
+  def entries
+    rows = super
+    CapResult.new(records: rows.first(self.class.cap), hit_cap?: rows.size > self.class.cap)
+  end
+end
+```
+
+#### Query-level (rewrite SQL/binds before execution)
+
+When you want to change what the database actually sees — tenant scoping, soft-delete filtering, default ordering — override `#query` and return a transformed `Q`. Use `with_select` / `with_binds` / `add_binds` etc.; they propagate the `row_builder` pipeline via `deep_dup`, so row-level middleware keeps working.
+
+```ruby
+module TenantScoped
+  def query
+    @query ||= super.add_binds(tenant_id: Current.tenant.id)
+  end
+end
+
+module HidesDeleted
+  def query
+    @query ||= super.with_select("SELECT * FROM :_ WHERE deleted_at IS NULL")
+  end
+end
+```
+
+#### Putting it together
+
+All three layers can sit on one class:
+
+```ruby
+class ArticlesQuery < ApplicationQuery
+  include HidesDeleted            # query-level: rewrites SQL
+  include Stamping                # row-level:   adds "stamped_at"
+  include AppQuery::Mappable      # row-level:   builds Item (must come after row-mutating middleware)
+  include AppQuery::Paginatable   # result-level: wraps entries
+end
+```
+
+Pipeline at run time, top to bottom: SQL is rewritten to filter `deleted_at IS NULL` → DB returns rows → each row gets `stamped_at` → each row becomes an `Item` → the array of Items is wrapped in a `PaginatedResult`.
+
 ## API Documentation
 
 See the [YARD documentation](https://eval.github.io/appquery/) for the full API reference.
