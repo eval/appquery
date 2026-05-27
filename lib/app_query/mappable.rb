@@ -66,10 +66,12 @@ module AppQuery
       self
     end
 
-    # Install our row_builder on the underlying Q so every row-returning path
-    # (entries, first, last, take, with_select(...).first, …) sees mapped rows.
+    # Append our transform to the underlying Q's RowBuilder pipeline so every
+    # row-returning path (entries, first, last, take, with_select(...).first,
+    # …) sees mapped rows. Stacks with other row-level middlewares in
+    # include-order — earlier `include`s run first.
     def query
-      @query ||= super.tap { |q| q.row_builder ||= method(:build_row) }
+      @query ||= super.tap { |q| q.row_builder << method(:build_row) }
     end
 
     private

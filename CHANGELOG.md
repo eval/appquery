@@ -3,16 +3,16 @@
 ### 💥 Breaking Changes
 
 - ⚠️ **`AppQuery::Mappable` extension API changed.**  
-  Middleware now installs a `row_builder` (callable) on `Q` via an overridden `#query`, instead of overriding `select_all`/`select_one`. The previous pattern of overriding those two methods will silently do nothing on row-returning paths it didn't cover (`entries`, `first`, `last`, `take`, `with_select(non_nil).first`, …). Any custom middleware that overrode `select_all`/`select_one` should migrate to:
+  Row-level middleware now appends a transformer to the underlying `Q`'s `row_builder` pipeline via an overridden `#query`, instead of overriding `select_all`/`select_one`. The previous pattern of overriding those two methods will silently do nothing on row-returning paths it didn't cover (`entries`, `first`, `last`, `take`, `with_select(non_nil).first`, …). Any custom middleware that overrode `select_all`/`select_one` should migrate to:
   ```ruby
   def query
-    @query ||= super.tap { |q| q.row_builder ||= method(:build_row) }
+    @query ||= super.tap { |q| q.row_builder << method(:build_row) }
   end
   ```
 
 ### ✨ Features
 
-- 🧩 **`AppQuery::Q#row_builder`** — single extension point for row-level middleware. Whatever the builder returns replaces the row everywhere Q exposes rows (`entries`, `first`, `last`, `take`, `take_last`, `with_select(...).first`, …). Propagated through `deep_dup`, so chained queries keep the same mapping.
+- 🧩 **`AppQuery::RowBuilder`** — composable pipeline of row transformers exposed as `Q#row_builder`. Append with `q.row_builder << callable`; transformers run in registration order. Multiple row-level middlewares stack cleanly in `include` order. The pipeline is applied everywhere `Q` exposes rows (`entries`, `first`, `last`, `take`, `take_last`, `with_select(...).first`, …) and is independently copied across `deep_dup` so chained queries don't mutate their parent.
 - 🎯 **`Mappable` is now one method.** Maps everywhere — including `entries`, `last`, `take(n)`, `with_select("…").first` paths that previously slipped through. `raw` bypass still works.
 - 🐛 **Comments inside CTE selects** no longer break tokenization; the whole `(SELECT … -- foo … )` is preserved as a single `CTE_SELECT` token.
 - Publishing gem requires MFA

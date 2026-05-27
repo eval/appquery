@@ -61,6 +61,16 @@ ActiveRecord::Schema.define do
   end
 end
 
+module Stampable
+  extend ActiveSupport::Concern
+
+  def query
+    @query ||= super.tap do |q|
+      q.row_builder << ->(row) { row.merge("stamped_at" => Time.now) }
+    end
+  end
+end
+
 # Models
 class Article < ActiveRecord::Base
   has_and_belongs_to_many :tags
@@ -77,11 +87,13 @@ class ApplicationQuery < AppQuery::BaseQuery
 end
 
 class RecentArticlesQuery < ApplicationQuery
+  include Stampable
   include AppQuery::Mappable
 
   per_page 10
 
   class Item < Data.define(
+    :stamped_at,
     :published_on,
     :tags,
     :title,

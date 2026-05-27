@@ -120,15 +120,52 @@ RSpec.describe AppQuery::BaseQuery, :db do
     end
   end
 
-  describe "Q#row_builder propagates through deep_dup" do
-    it "is copied by with_select, with_binds, add_binds, with_sql, with_cast" do
-      builder = ->(row) { row.merge("touched" => true) }
+  describe "Q#row_builder pipeline" do
+    it "propagates through with_select, with_binds, add_binds, with_sql, with_cast" do
       q = AppQuery("select 1 as x")
-      q.row_builder = builder
+      q.row_builder << ->(row) { row.merge("touched" => true) }
 
       [q.with_select("SELECT * FROM :_"), q.with_binds, q.add_binds, q.with_sql("select 2 as x"), q.with_cast(false)].each do |child|
-        expect(child.row_builder).to eq(builder)
+        expect(child.row_builder).to be_a(AppQuery::RowBuilder)
+        expect(child.row_builder.call({"x" => 1})).to include("touched" => true)
       end
+    end
+
+    it "child pipeline is independent of parent after deep_dup" do
+      parent = AppQuery("select 1 as x")
+      parent.row_builder << ->(row) { row.merge("a" => 1) }
+      child = parent.with_select("SELECT * FROM :_")
+
+      child.row_builder << ->(row) { row.merge("b" => 2) }
+
+      expect(parent.row_builder.call({})).to eq({"a" => 1}.with_indifferent_access)
+      expect(child.row_builder.call({})).to eq({"a" => 1, "b" => 2}.with_indifferent_access)
+    end
+
+    it "two row-level middlewares chain in include order" do
+      stamp_first = Module.new do
+        extend ActiveSupport::Concern
+        define_method(:query) do
+          @query ||= super().tap { |q| q.row_builder << ->(row) { row.merge("a" => 1) } }
+        end
+      end
+      stamp_second = Module.new do
+        extend ActiveSupport::Concern
+        define_method(:query) do
+          @query ||= super().tap { |q| q.row_builder << ->(row) { row.merge("b" => row["a"].to_i + 1) } }
+        end
+      end
+
+      sql = articles_sql
+      stub_const("ChainQuery", Class.new(described_class) {
+        include stamp_first
+        include stamp_second
+      })
+      ChainQuery.define_method(:base_query) { AppQuery(sql) }
+
+      row = ChainQuery.new.first
+      expect(row["a"]).to eq(1)   # first include ran first
+      expect(row["b"]).to eq(2)   # last include saw "a" already set
     end
   end
 end

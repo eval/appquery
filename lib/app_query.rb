@@ -155,6 +155,43 @@ module AppQuery
     Q.new("SELECT * FROM #{quote_table(name)}", name: "AppQuery.table(#{name})", **opts)
   end
 
+  # Composable pipeline of row transformers.
+  #
+  # Appended via `<<` and applied in registration order — earliest pushed
+  # runs first, latest pushed runs last (so its return value is what callers
+  # see). An empty pipeline is a no-op.
+  #
+  # @example
+  #   rb = AppQuery::RowBuilder.new
+  #   rb << ->(row) { row.merge("a" => 1) }
+  #   rb << ->(row) { row.merge("b" => 2) }
+  #   rb.call({})  # => {"a" => 1, "b" => 2}
+  class RowBuilder
+    def initialize(procs = [])
+      @procs = procs
+    end
+
+    # Append a transformer. Returns self so `q.row_builder << proc` reads
+    # naturally and `<<=` also works.
+    def <<(callable)
+      @procs << callable
+      self
+    end
+
+    def call(row)
+      @procs.reduce(row) { |acc, p| p.call(acc) }
+    end
+
+    def empty? = @procs.empty?
+    def size = @procs.size
+
+    # Independent copy — used by Q#deep_dup so chained queries don't share
+    # the parent's pipeline.
+    def dup
+      self.class.new(@procs.dup)
+    end
+  end
+
   class Result < ActiveRecord::Result
     attr_accessor :cast, :row_builder
     alias_method :cast?, :cast
@@ -211,8 +248,9 @@ module AppQuery
     private
 
     # Override to provide indifferent access (string or symbol keys).
-    # Applies row_builder lazily so callers see built rows everywhere
-    # (first, last, each, entries, to_a, [] …).
+    # Applies the RowBuilder pipeline lazily so callers see built rows
+    # everywhere (first, last, each, entries, to_a, [] …). An empty/absent
+    # builder is a no-op.
     def hash_rows
       @hash_rows ||= rows.map do |row|
         hash = columns.zip(row).to_h.with_indifferent_access
@@ -327,11 +365,13 @@ module AppQuery
     # @return [Boolean, Hash, Array] casting configuration
     attr_reader :sql, :name, :filename, :binds, :cast
 
-    # Middleware extension point: a callable (Proc, Method) invoked with each
-    # row Hash. Whatever it returns replaces the row everywhere Q exposes rows
+    # Middleware extension point. The {RowBuilder} is a composable pipeline:
+    # middlewares append transformers with `q.row_builder << ->(row) { … }`
+    # and the result is applied to every row everywhere Q exposes rows
     # (entries, first, last, take, take_last, with_select(...).first, …).
-    # Propagated through deep_dup so chained queries keep the same mapping.
-    # @return [#call, nil]
+    # Propagated through {#deep_dup} (with an independent copy) so chained
+    # queries inherit the pipeline but don't mutate the parent's.
+    # @return [RowBuilder]
     attr_accessor :row_builder
 
     # Creates a new query object.
@@ -354,7 +394,7 @@ module AppQuery
       @binds = binds
       @cast = cast
       @cte_depth = cte_depth
-      @row_builder = row_builder
+      @row_builder = row_builder || RowBuilder.new
       @binds = binds_with_defaults(sql, binds)
     end
 
@@ -377,7 +417,7 @@ module AppQuery
       end
     end
 
-    def deep_dup(sql: self.sql, name: self.name, filename: self.filename, binds: self.binds.dup, cast: self.cast, cte_depth: self.cte_depth, row_builder: self.row_builder)
+    def deep_dup(sql: self.sql, name: self.name, filename: self.filename, binds: self.binds.dup, cast: self.cast, cte_depth: self.cte_depth, row_builder: self.row_builder.dup)
       self.class.new(sql, name:, filename:, binds:, cast:, cte_depth:, row_builder:)
     end
 
