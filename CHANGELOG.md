@@ -9,11 +9,14 @@
     @query ||= super.tap { |q| q.row_builder << method(:build_row) }
   end
   ```
+- ⚠️ **`Q#column` now raises `ArgumentError` for unknown columns.**  
+  Previously, on SQLite, `q.column(:typo)` silently returned a row per record containing the *string* `"typo"` (the SQLite "double-quoted strings are identifiers OR string literals" quirk masked the missing column). It now pre-validates against `column_names` and raises with the available column list — consistently across SQLite and PostgreSQL.
 
 ### ✨ Features
 
 - 🧩 **`AppQuery::RowBuilder`** — composable pipeline of row transformers exposed as `Q#row_builder`. Append with `q.row_builder << callable`; transformers run in registration order. Multiple row-level middlewares stack cleanly in `include` order. The pipeline is applied everywhere `Q` exposes rows (`entries`, `first`, `last`, `take`, `take_last`, `with_select(...).first`, …) and is independently copied across `deep_dup` so chained queries don't mutate their parent.
 - 🎯 **`Mappable` is now one method.** Maps everywhere — including `entries`, `last`, `take(n)`, `with_select("…").first` paths that previously slipped through. `raw` bypass still works.
+- 🐛 **`Q#column` typo protection** — see breaking-change note above.
 - 🐛 **Comments inside CTE selects** no longer break tokenization; the whole `(SELECT … -- foo … )` is preserved as a single `CTE_SELECT` token.
 - Publishing gem requires MFA
 

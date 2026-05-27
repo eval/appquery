@@ -103,6 +103,20 @@ RSpec.describe AppQuery::Q do
     specify "with unique: true" do
       expect(articles_query.column(:published, unique: true)).to contain_exactly(true, false)
     end
+
+    specify "raises for an unknown column (catches SQLite DQS quirk uniformly)" do
+      expect { articles_query.column(:foo) }.to \
+        raise_error(ArgumentError, /Unknown column :foo.*Available: \["id", "title", "published"\]/)
+    end
+
+    specify "validates against the post-select column list" do
+      # 'published' exists in the base CTE but NOT after this projection
+      sql_select = "SELECT id, title FROM :_"
+      expect { articles_query.column(:published, sql_select) }.to \
+        raise_error(ArgumentError, /Unknown column :published/)
+      # …and a column that DOES exist after the projection works
+      expect(articles_query.column(:title, sql_select)).to eq(["First", "Second", "Third"])
+    end
   end
 
   describe "#column_names", :db do

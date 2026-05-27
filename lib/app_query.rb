@@ -183,6 +183,7 @@ module AppQuery
     end
 
     def empty? = @procs.empty?
+
     def size = @procs.size
 
     # Independent copy — used by Q#deep_dup so chained queries don't share
@@ -712,7 +713,16 @@ module AppQuery
     # @example Extract unique values
     #   AppQuery("SELECT * FROM products").column(:category, unique: true)
     #   # => ["Electronics", "Clothing", "Home"]
+    #
+    # @raise [ArgumentError] if the column doesn't exist in the (optionally
+    #   selected) query. Pre-validating catches typos consistently across
+    #   databases — e.g. without this, SQLite's "double-quoted strings"
+    #   quirk would silently return rows of the column-name as a string.
     def column(c, s = nil, binds: {}, unique: false)
+      available = column_names(s, binds:)
+      unless available.include?(c.to_s)
+        raise ArgumentError, "Unknown column #{c.inspect}. Available: #{available.inspect}."
+      end
       quoted = quote_column(c)
       select_expr = unique ? "DISTINCT #{quoted}" : quoted
       with_select(s).select_all("SELECT #{select_expr} AS column FROM :_", binds:).column("column")
