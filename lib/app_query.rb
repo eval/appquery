@@ -156,14 +156,21 @@ module AppQuery
   end
 
   class Result < ActiveRecord::Result
-    attr_accessor :cast
+    attr_accessor :cast, :row_builder
     alias_method :cast?, :cast
 
-    def initialize(columns, rows, overrides = nil, cast: false)
+    def initialize(columns, rows, overrides = nil, cast: false, row_builder: nil)
       super(columns, rows, overrides)
       @cast = cast
+      @row_builder = row_builder
       # Rails v6.1: prevent mutate on frozen object on #first
       @hash_rows = [] if columns.empty?
+    end
+
+    # AR::Result#first reads @hash_rows directly when not yet memoized,
+    # bypassing our hash_rows override. Force it through.
+    def first
+      hash_rows.first
     end
 
     # Returns an array of values for a single column.
@@ -204,9 +211,12 @@ module AppQuery
     private
 
     # Override to provide indifferent access (string or symbol keys).
+    # Applies row_builder lazily so callers see built rows everywhere
+    # (first, last, each, entries, to_a, [] …).
     def hash_rows
       @hash_rows ||= rows.map do |row|
-        columns.zip(row).to_h.with_indifferent_access
+        hash = columns.zip(row).to_h.with_indifferent_access
+        row_builder ? row_builder.call(hash) : hash
       end
     end
 
@@ -243,9 +253,9 @@ module AppQuery
       end
     end
 
-    def self.from_ar_result(r, cast = nil)
+    def self.from_ar_result(r, cast = nil, row_builder: nil)
       if r.empty?
-        r.columns.empty? ? EMPTY : new(r.columns, [], r.column_types)
+        r.columns.empty? ? EMPTY : new(r.columns, [], r.column_types, row_builder:)
       else
         cast &&= case cast
         when Array
@@ -257,7 +267,7 @@ module AppQuery
         end
         if !cast || (cast.empty? && r.column_types.empty?)
           # nothing to cast
-          new(r.columns, r.rows, r.column_types)
+          new(r.columns, r.rows, r.column_types, row_builder:)
         else
           overrides = (r.column_types || {}).merge(cast)
           rows = r.cast_values(overrides)
@@ -267,7 +277,7 @@ module AppQuery
           # > ActiveRecord::Base.connection.select_all("select array[1,2]").cast_values
           # => [[1, 2]]
           rows = rows.zip if r.columns.one?
-          new(r.columns, rows, overrides, cast: true)
+          new(r.columns, rows, overrides, cast: true, row_builder:)
         end
       end
     end
@@ -317,6 +327,13 @@ module AppQuery
     # @return [Boolean, Hash, Array] casting configuration
     attr_reader :sql, :name, :filename, :binds, :cast
 
+    # Middleware extension point: a callable (Proc, Method) invoked with each
+    # row Hash. Whatever it returns replaces the row everywhere Q exposes rows
+    # (entries, first, last, take, take_last, with_select(...).first, …).
+    # Propagated through deep_dup so chained queries keep the same mapping.
+    # @return [#call, nil]
+    attr_accessor :row_builder
+
     # Creates a new query object.
     #
     # @param sql [String] the SQL query string (may contain ERB)
@@ -330,13 +347,14 @@ module AppQuery
     #
     # @example With ERB and binds
     #   Q.new("SELECT * FROM users WHERE id = :id", binds: {id: 1})
-    def initialize(sql, name: nil, filename: nil, binds: {}, cast: true, cte_depth: 0)
+    def initialize(sql, name: nil, filename: nil, binds: {}, cast: true, cte_depth: 0, row_builder: nil)
       @sql = sql
       @name = name
       @filename = filename
       @binds = binds
       @cast = cast
       @cte_depth = cte_depth
+      @row_builder = row_builder
       @binds = binds_with_defaults(sql, binds)
     end
 
@@ -359,8 +377,8 @@ module AppQuery
       end
     end
 
-    def deep_dup(sql: self.sql, name: self.name, filename: self.filename, binds: self.binds.dup, cast: self.cast, cte_depth: self.cte_depth)
-      self.class.new(sql, name:, filename:, binds:, cast:, cte_depth:)
+    def deep_dup(sql: self.sql, name: self.name, filename: self.filename, binds: self.binds.dup, cast: self.cast, cte_depth: self.cte_depth, row_builder: self.row_builder)
+      self.class.new(sql, name:, filename:, binds:, cast:, cte_depth:, row_builder:)
     end
 
     # @!group Rendering
@@ -468,7 +486,7 @@ module AppQuery
           ActiveRecord::Base.sanitize_sql_array([aq.to_s, aq.binds])
         end
         ActiveRecord::Base.connection.select_all(sql, aq.name).then do |result|
-          Result.from_ar_result(result, cast)
+          Result.from_ar_result(result, cast, row_builder: aq.row_builder)
         end
       end
     rescue NameError => e
@@ -492,7 +510,8 @@ module AppQuery
     def select_one(s = nil, binds: {}, cast: self.cast)
       with_select(s).select_all("SELECT * FROM :_ LIMIT 1", binds:, cast:).first
     end
-    alias_method :first, :select_one
+
+    def first(...) = select_one(...)
 
     # Executes the query and returns the last row.
     #

@@ -79,6 +79,8 @@ end
 class RecentArticlesQuery < ApplicationQuery
   include AppQuery::Mappable
 
+  per_page 10
+
   class Item < Data.define(
     :published_on,
     :tags,

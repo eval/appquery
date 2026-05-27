@@ -290,6 +290,31 @@ end
 
 See [the API docs](https://eval.github.io/appquery/AppQuery/RSpec/Helpers.html) for more RSpec examples.
 
+### Writing a Middleware
+
+A `BaseQuery` middleware participates by overriding `#query` and installing a `row_builder` on the underlying `Q`. The builder is a callable that receives each row Hash and returns whatever should replace it — a Struct, a Data class, your own model, anything.
+
+```ruby
+module Stamping
+  extend ActiveSupport::Concern
+
+  def query
+    @query ||= super.tap { |q| q.row_builder ||= ->(row) { row.merge("stamped_at" => Time.now) } }
+  end
+end
+
+class ArticlesQuery < ApplicationQuery
+  include Stamping
+end
+
+ArticlesQuery.new.first         # => {"id" => 1, ..., "stamped_at" => 2026-...}
+ArticlesQuery.new.entries.first # same — every row-returning path flows through row_builder
+```
+
+The builder propagates through `with_select(non_nil)`, `add_binds`, `with_binds`, `with_cast`, `with_sql`, and CTE focusing (`#cte`), so chained calls keep the same mapping. {AppQuery::Mappable} is a one-method middleware built exactly this way.
+
+For *result-level* middleware (wrapping the whole result rather than transforming rows), override the row-returning method directly — see {AppQuery::Paginatable}, which wraps `#entries` in a `PaginatedResult`. Result- and row-level middleware compose cleanly: `Paginatable`'s `super` returns rows that have already been through `row_builder`, so the records inside the `PaginatedResult` are already mapped.
+
 ## API Documentation
 
 See the [YARD documentation](https://eval.github.io/appquery/) for the full API reference.
