@@ -1246,7 +1246,7 @@ module AppQuery
     # Returns SQL for max(a, b) that works across adapters.
     # PostgreSQL uses GREATEST, SQLite uses MAX for scalar comparison.
     def greatest(a, b)
-      if ActiveRecord::Base.connection.adapter_name =~ /sqlite/i
+      if /sqlite/i.match?(ActiveRecord::Base.connection.adapter_name)
         "MAX(#{a}, #{b})"
       else
         "GREATEST(#{a}, #{b})"
