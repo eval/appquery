@@ -259,8 +259,11 @@ SQL
 csv = AppQuery[:users].copy_to
 #=> "id,name\n1,Alice\n2,Bob\n..."
 
+# additional select
+AppQuery[:users].copy_to("select * from _ where admin")
+
 # Write to file
-AppQuery[:users].copy_to(to: "export.csv")
+AppQuery[:users].copy_to(dest: "export.csv")
 
 # Stream to IO
 File.open("users.csv.gz", "wb") do |f|
