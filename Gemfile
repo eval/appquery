@@ -17,7 +17,6 @@ gem "rdoc"
 gem "benchmark"
 gem "irb"
 
-gem "activerecord"
 gem "pg"
 
 gem "sqlite3", "~> 2.6"
